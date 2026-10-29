@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Anaverse Health"
+description = "A polished Uzbek-language hospital landing page inspired by the provided reference, featuring hospital services, doctors, facilities, health articles, and realistic 3D organ illustrations."
+version = "1.0.0"
+id = "artifacts/anaverse-health"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18758
+
+[services.development]
+run = "pnpm --filter @workspace/anaverse-health run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/anaverse-health", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/anaverse-health/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18758"
+BASE_PATH = "/"
