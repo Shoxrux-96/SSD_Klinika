@@ -75,6 +75,63 @@ function Logo() {
   );
 }
 
+const anatomyItems = [
+  { id: 'tish', label: 'Tish', image: '/assets/tooth-model.png', detail: 'Tish tuzilishi', note: 'Og‘iz bo‘shlig‘i salomatligi bo‘yicha ko‘rik va maslahat.', position: 'tooth' },
+  { id: 'yurak', label: 'Yurak', image: '/assets/organ-heart.jpg', detail: 'Yurak faoliyati', note: 'Yurak-qon tomir salomatligi bo‘yicha mutaxassis ko‘rigi.', position: 'heart' },
+  { id: 'opka', label: 'O‘pka', image: '/assets/organ-lungs.jpg', detail: 'Nafas tizimi', note: 'Nafas olish va o‘pka salomatligi bo‘yicha ko‘rik.', position: 'lungs' },
+  { id: 'ekg', label: 'EKG', image: '', detail: 'EKG tekshiruvi', note: 'Yurak elektr faolligini qayd etuvchi tekshiruv turi.', position: 'ekg' },
+  { id: 'laboratoriya', label: 'Laboratoriya', image: '/assets/organ-body.jpg', detail: 'Laboratoriya', note: 'Tahlil turi shifokor tavsiyasiga ko‘ra belgilanadi.', position: 'lab' },
+  { id: 'rentgen', label: 'Rentgen', image: '/assets/organ-spine.jpg', detail: 'Rentgen tasviri', note: 'Tasviriy tekshiruv zarurati shifokor bilan aniqlanadi.', position: 'xray' },
+];
+
+function AnatomyExperience() {
+  const [active, setActive] = useState(anatomyItems[1]);
+  return (
+    <div className="anatomy-experience" data-testid="anatomy-experience">
+      <div className="anatomy-scene" aria-label="Interaktiv anatomiya tasviri">
+        <div className="scene-orbit orbit-one" aria-hidden="true" />
+        <div className="scene-orbit orbit-two" aria-hidden="true" />
+        <div className="scene-caption"><span className="scene-live-dot" /> ANATOMIYA / 01</div>
+        <img className="anatomy-body" src="/assets/anatomy-hero.png" alt="Inson tanasining ichki a’zolari ko‘rsatilgan anatomik tasvir" data-testid="img-anatomy-body" />
+        {anatomyItems.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className={`anatomy-node node-${item.position}${active.id === item.id ? ' is-active' : ''}`}
+            onClick={() => setActive(item)}
+            aria-label={`${item.label} bo‘yicha ma’lumotni ko‘rsatish`}
+            aria-pressed={active.id === item.id}
+            data-testid={`button-anatomy-${item.id}`}
+          >
+            {item.id === 'ekg' ? (
+              <svg className="ekg-wave" viewBox="0 0 120 44" role="img" aria-label="EKG to‘lqinining namuna chizig‘i">
+                <path d="M2 23h23l7-1 6-12 9 26 9-19 7 6h11l7-1 7-12 9 25 7-12h9" />
+              </svg>
+            ) : <img src={item.image} alt="" />}
+            <span>{item.label}</span>
+          </button>
+        ))}
+        <div className="scene-coordinate" aria-hidden="true">41°18′ N<br />69°16′ E</div>
+      </div>
+      <div className="anatomy-detail" aria-live="polite" data-testid="panel-anatomy-detail">
+        <div className="detail-index">TANLANGAN YO‘NALISH <span>0{anatomyItems.findIndex((item) => item.id === active.id) + 1} / 06</span></div>
+        <div className="detail-content">
+          <span className="detail-marker" aria-hidden="true" />
+          <div><strong>{active.detail}</strong><p>{active.note}</p></div>
+        </div>
+        <small>Ma’lumot tanishtiruv uchun. Tashxis o‘rnini bosmaydi.</small>
+      </div>
+      <div className="scene-legend" aria-label="Anatomiya yo‘nalishlari">
+        {anatomyItems.map((item) => (
+          <button key={item.id} type="button" onClick={() => setActive(item)} aria-pressed={active.id === item.id} data-testid={`button-select-${item.id}`}>
+            <span className="legend-mark" />{item.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<string | null>(null);
@@ -131,12 +188,7 @@ function App() {
             </div>
           </div>
           <div className="hero-visual reveal delay-1">
-            <div className="hero-photo"><img src="/assets/hero-care.jpg" alt="Shifokor yosh bemorga mehr bilan yordam bermoqda" /></div>
-            <div className="floating-card hero-card">
-              <span className="card-icon"><HeartPulse size={20} /></span>
-              <span><strong>Yurakdan g‘amxo‘rlik</strong><small>Birinchi murojaatdan boshlab</small></span>
-            </div>
-            <div className="hero-stamp"><strong>24/7</strong><small>siz uchun<br />xizmatdamiz</small></div>
+            <AnatomyExperience />
           </div>
         </section>
 
