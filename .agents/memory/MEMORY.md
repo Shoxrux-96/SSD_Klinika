@@ -1,0 +1,1 @@
+- [Clinic contact data](clinic-contact-data.md) — Keep unverified location and channels visibly temporary until the user supplies them.

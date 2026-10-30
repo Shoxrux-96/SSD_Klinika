@@ -8,8 +8,12 @@ import {
   Clock3,
   HeartPulse,
   Hospital,
+  Instagram,
+  Mail,
+  MapPin,
   Menu,
   Phone,
+  Send,
   ShieldCheck,
   Stethoscope,
   X,
@@ -33,6 +37,7 @@ const navLinks = [
   ['Shifokorlar', '#doctors'],
   ['Imkoniyatlar', '#facilities'],
   ['Maqolalar', '#articles'],
+  ['Qabulga yozilish', '#appointment'],
   ['Aloqa', '#contact'],
 ];
 
@@ -154,11 +159,11 @@ function App() {
         <div className="site-shell nav-inner">
           <Logo />
           <nav className="nav-links" aria-label="Asosiy navigatsiya">
-            {navLinks.map(([label, href]) => <a key={href} href={href}>{label}</a>)}
+            {navLinks.map(([label, href]) => <a key={href} href={href} data-testid={`link-nav-${href.slice(1)}`}>{label}</a>)}
           </nav>
           <div className="nav-actions">
             <a className="nav-phone" href="tel:+998712345678"><Phone size={15} /> +998 71 234 56 78</a>
-            <a className="button button-primary" href="#contact"><Clock3 size={15} /> Qabulga yozilish</a>
+            <a className="button button-primary" href="#appointment"><Clock3 size={15} /> Qabulga yozilish</a>
             <button className="menu-toggle" aria-label={menuOpen ? 'Menyuni yopish' : 'Menyuni ochish'} aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}>
               {menuOpen ? <X size={22} /> : <Menu size={22} />}
             </button>
@@ -166,8 +171,7 @@ function App() {
         </div>
         {menuOpen && (
           <nav className="mobile-nav" aria-label="Mobil navigatsiya">
-            {navLinks.map(([label, href]) => <a key={href} href={href} onClick={closeMenu}>{label}</a>)}
-            <a href="#contact" onClick={closeMenu}>Qabulga yozilish</a>
+            {navLinks.map(([label, href]) => <a key={href} href={href} onClick={closeMenu} data-testid={`link-mobile-nav-${href.slice(1)}`}>{label}</a>)}
           </nav>
         )}
       </header>
@@ -287,27 +291,75 @@ function App() {
           </div>
         </section>
 
-        <section className="site-shell section contact-section" id="contact">
-          <div className="contact-copy">
+        <section className="site-shell section contact-section" id="contact" aria-labelledby="contact-title">
+          <div className="contact-intro">
             <span className="kicker">Biz bilan bog‘laning</span>
-            <h2>Sizga yordam berishga tayyormiz.</h2>
-            <p>Savolingiz bormi yoki mutaxassis bilan maslahatlashmoqchimisiz? Ma’lumotlaringizni qoldiring — jamoamiz siz bilan bog‘lanish uchun aloqaga chiqadi.</p>
-            <div className="contact-list">
-              <a className="contact-line" href="tel:+998712345678"><span className="check"><Phone size={15} /></span>+998 71 234 56 78</a>
-              <div className="contact-line"><span className="check"><Clock3 size={15} /></span>Har kuni, 24 soat</div>
-              <div className="contact-line"><span className="check"><Hospital size={15} /></span>Toshkent shahri, O‘zbekiston</div>
+            <h2 id="contact-title">Sizga yordam berishga tayyormiz.</h2>
+            <p>Savolingiz bo‘lsa yoki klinikaga tashrif rejalashtirsangiz, o‘zingizga qulay aloqa usulini tanlang.</p>
+          </div>
+          <div className="contact-layout">
+            <div className="contact-card-grid" aria-label="Klinika bilan aloqa ma’lumotlari">
+              <a className="contact-card" href="tel:+998712345678" data-testid="card-contact-phone">
+                <span className="contact-icon"><Phone size={21} /></span>
+                <span className="contact-card-copy"><small>Telefon</small><strong>+998 71 234 56 78</strong><em>Har kuni, 24 soat</em></span>
+                <ArrowRight className="contact-arrow" size={17} />
+              </a>
+              <div className="contact-card" data-testid="card-contact-address">
+                <span className="contact-icon"><MapPin size={21} /></span>
+                <span className="contact-card-copy"><small>Manzil</small><strong>Toshkent shahri, O‘zbekiston</strong><em>Aniq manzil keyin qo‘shiladi</em></span>
+              </div>
+              <div className="contact-card contact-card-pending" data-testid="card-contact-email">
+                <span className="contact-icon"><Mail size={21} /></span>
+                <span className="contact-card-copy"><small>Email</small><strong>Ma’lumot keyin qo‘shiladi</strong><em>Klinika email manzili</em></span>
+              </div>
+              <div className="contact-card contact-card-pending" data-testid="card-contact-telegram">
+                <span className="contact-icon"><Send size={21} /></span>
+                <span className="contact-card-copy"><small>Telegram</small><strong>Havola keyin qo‘shiladi</strong><em>Rasmiy Telegram sahifasi</em></span>
+              </div>
+              <div className="contact-card contact-card-pending" data-testid="card-contact-instagram">
+                <span className="contact-icon"><Instagram size={21} /></span>
+                <span className="contact-card-copy"><small>Instagram</small><strong>Havola keyin qo‘shiladi</strong><em>Rasmiy Instagram sahifasi</em></span>
+              </div>
+            </div>
+            <div className="map-card" data-testid="map-openstreetmap">
+              <iframe
+                title="Toshkent markazining OpenStreetMap xaritasi"
+                src="https://www.openstreetmap.org/export/embed.html?bbox=69.25%2C41.29%2C69.31%2C41.33&layer=mapnik&marker=41.3111%2C69.2797"
+                width={640}
+                height={540}
+                loading="eager"
+              />
+              <div className="map-badge">
+                <span className="map-pin"><MapPin size={18} /></span>
+                <span><strong>Toshkent markazi</strong><small>Klinikaning aniq manzili keyin belgilanadi</small></span>
+              </div>
+              <a className="map-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
+                © OpenStreetMap contributors
+              </a>
+              <a className="map-link" href="https://www.openstreetmap.org/?mlat=41.3111&mlon=69.2797#map=14/41.3111/69.2797" target="_blank" rel="noreferrer">
+                OpenStreetMap’da ochish <ArrowRight size={15} />
+              </a>
             </div>
           </div>
-          <form className="contact-form" onSubmit={handleSubmit}>
-            <div className="form-heading">Qayta qo‘ng‘iroq so‘rovi</div>
+        </section>
+
+        <section className="site-shell section appointment-section" id="appointment" aria-labelledby="appointment-title">
+          <div className="appointment-copy">
+            <span className="kicker">Qulay va tez</span>
+            <h2 id="appointment-title">Qabulga yoziling.</h2>
+            <p>Ma’lumotlaringizni qoldiring — klinika jamoasi siz bilan bog‘lanish uchun aloqaga chiqadi.</p>
+            <div className="appointment-hours"><span className="check"><Clock3 size={18} /></span><span><strong>Har kuni, 24 soat</strong><small>So‘rovni istalgan vaqtda yuborishingiz mumkin</small></span></div>
+          </div>
+          <form className="contact-form appointment-form" onSubmit={handleSubmit} data-testid="form-appointment">
+            <div className="form-heading">Qabul so‘rovi</div>
             <div className="form-grid">
-              <div className="field"><label htmlFor="name">Ismingiz</label><input id="name" name="name" autoComplete="name" placeholder="Ismingizni kiriting" required /></div>
-              <div className="field"><label htmlFor="phone">Telefon raqamingiz</label><input id="phone" name="phone" autoComplete="tel" type="tel" placeholder="+998 __ ___ __ __" required /></div>
-              <div className="field full"><label htmlFor="service">Qaysi xizmat kerak?</label><select id="service" name="service" defaultValue=""><option value="" disabled>Yo‘nalishni tanlang</option>{services.map((service) => <option key={service.key}>{service.title}</option>)}</select></div>
-              <div className="field full"><label htmlFor="message">Izoh <span>(ixtiyoriy)</span></label><textarea id="message" name="message" placeholder="Sizga qanday yordam bera olamiz?" /></div>
+              <div className="field"><label htmlFor="appointment-name">Ismingiz</label><input id="appointment-name" name="name" autoComplete="name" placeholder="Ismingizni kiriting" required data-testid="input-appointment-name" /></div>
+              <div className="field"><label htmlFor="appointment-phone">Telefon raqamingiz</label><input id="appointment-phone" name="phone" autoComplete="tel" type="tel" placeholder="+998 __ ___ __ __" required data-testid="input-appointment-phone" /></div>
+              <div className="field full"><label htmlFor="appointment-service">Qaysi xizmat kerak?</label><select id="appointment-service" name="service" defaultValue="" data-testid="select-appointment-service"><option value="" disabled>Yo‘nalishni tanlang</option>{services.map((service) => <option key={service.key}>{service.title}</option>)}</select></div>
+              <div className="field full"><label htmlFor="appointment-message">Izoh <span>(ixtiyoriy)</span></label><textarea id="appointment-message" name="message" placeholder="Sizga qanday yordam bera olamiz?" data-testid="input-appointment-message" /></div>
             </div>
-            <button className="button button-primary form-submit" type="submit">So‘rov qoldirish <ArrowRight size={15} /></button>
-            {submitted && <div className="form-message" role="status"><Check size={16} /> So‘rovingiz ushbu sahifada qayd etildi. Bu demo shakl bo‘lib, ma’lumotlar shifoxonaga yuborilmadi.</div>}
+            <button className="button button-primary form-submit" type="submit" data-testid="button-submit-appointment">Qabul so‘rovini yuborish <ArrowRight size={17} /></button>
+            {submitted && <div className="form-message" role="status" data-testid="status-appointment-submitted"><Check size={18} /> So‘rovingiz ushbu sahifada qayd etildi. Bu demo shakl bo‘lib, ma’lumotlar klinikaga yuborilmadi.</div>}
           </form>
         </section>
       </main>
