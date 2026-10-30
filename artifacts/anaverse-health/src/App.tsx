@@ -18,6 +18,7 @@ import {
   Stethoscope,
   X,
 } from 'lucide-react';
+import { ClinicMap } from './ClinicMap';
 
 const services = [
   { key: 'yurak', title: 'Yurak salomatligi', description: 'Yurak va qon tomirlar diagnostikasi', image: 'organ-heart.jpg' },
@@ -329,25 +330,7 @@ function App() {
                 <span className="contact-card-copy"><small>Instagram</small><strong>Havola keyin qo‘shiladi</strong><em>Rasmiy sahifa</em></span>
               </div>
             </div>
-            <div className="map-card" data-testid="map-openstreetmap">
-              <iframe
-                title="Toshkent markazining OpenStreetMap xaritasi"
-                src="https://www.openstreetmap.org/export/embed.html?bbox=69.25%2C41.29%2C69.31%2C41.33&layer=mapnik&marker=41.3111%2C69.2797"
-                width={640}
-                height={540}
-                loading="eager"
-              />
-              <div className="map-badge">
-                <span className="map-pin"><MapPin size={18} /></span>
-                <span><strong>Toshkent markazi</strong><small>Joylashuv hozircha taxminiy</small></span>
-              </div>
-              <a className="map-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
-                © OpenStreetMap contributors
-              </a>
-              <a className="map-link" href="https://www.openstreetmap.org/?mlat=41.3111&mlon=69.2797#map=14/41.3111/69.2797" target="_blank" rel="noreferrer">
-                OpenStreetMap’da ochish <ArrowRight size={15} />
-              </a>
-            </div>
+            <ClinicMap />
           </div>
         </section>
 

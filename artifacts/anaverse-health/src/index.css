@@ -454,19 +454,26 @@ h1,h2,h3,p { margin-top:0; }
 .contact-card-pending .contact-icon {width:40px;height:40px;border-radius:13px;background:#f0f2ff;color:#6b78c5}
 .contact-card-pending .contact-card-copy strong {color:#657197;font-family:var(--app-font-sans);font-size:15px}
 .contact-arrow {margin-left:auto;flex:none;color:#8590b2}
+.map-panel {display:grid;gap:10px;min-width:0}
 .map-card {position:relative;min-height:410px;overflow:hidden;border:1px solid #e2e6f5;border-radius:24px;background:#e8ecf7;box-shadow:0 14px 35px rgba(48,63,142,.09)}
-.map-card iframe {position:absolute;inset:0;width:100%;height:100%;min-height:410px;border:0}
-.map-badge {
-  position:absolute;top:17px;left:17px;display:flex;align-items:center;gap:11px;max-width:calc(100% - 34px);
-  padding:12px 15px;border:1px solid rgba(255,255,255,.85);border-radius:16px;
-  background:rgba(255,255,255,.94);box-shadow:0 8px 24px rgba(36,49,112,.13);backdrop-filter:blur(12px)
-}
-.map-pin {display:grid;place-items:center;width:38px;height:38px;flex:none;border-radius:12px;background:#eef0ff;color:#4b5fcd}
-.map-badge strong,.map-badge small {display:block}
-.map-badge strong {color:#27336f;font-size:16px}
-.map-badge small {margin-top:3px;color:#77809b;font-size:12px;line-height:1.35}
-.map-attribution {position:absolute;left:16px;bottom:18px;padding:7px 10px;border-radius:10px;background:rgba(255,255,255,.92);color:#52617e;font-size:12px;text-decoration:none;box-shadow:0 5px 16px rgba(36,49,112,.1)}
-.map-link {position:absolute;right:16px;bottom:16px;display:flex;align-items:center;gap:8px;padding:11px 15px;border-radius:13px;background:#fff;color:#3548b4;font-size:14px;font-weight:700;text-decoration:none;box-shadow:0 8px 22px rgba(36,49,112,.14)}
+.clinic-leaflet-map {position:absolute;inset:0;width:100%;height:100%;background:#e8ecf7;color:#27336f;font-family:var(--app-font-sans)}
+.clinic-leaflet-map .leaflet-tile-pane {filter:saturate(.78)}
+.clinic-leaflet-map .leaflet-popup-content-wrapper {border-radius:14px;box-shadow:0 8px 24px rgba(36,49,112,.16)}
+.clinic-leaflet-map .leaflet-popup-content {margin:12px 15px;font-size:14px;line-height:1.55}
+.clinic-leaflet-map .leaflet-popup-content strong {color:#29366f}
+.clinic-map-controls {position:absolute;z-index:800;top:14px;right:14px;display:grid;justify-items:end;gap:10px}
+.clinic-map-zoom {display:grid;overflow:hidden;border:1px solid #e1e5f4;border-radius:13px;background:rgba(255,255,255,.96);box-shadow:0 6px 18px rgba(36,49,112,.14)}
+.clinic-map-zoom button,.clinic-map-locate {display:grid;place-items:center;width:43px;height:43px;border:0;background:transparent;color:#4358bd;cursor:pointer;transition:background .18s ease,color .18s ease}
+.clinic-map-zoom button+button {border-top:1px solid #e9ecf6}
+.clinic-map-zoom button:hover,.clinic-map-locate:hover {background:#f0f2ff;color:#3046aa}
+.clinic-map-zoom button:focus-visible,.clinic-map-locate:focus-visible {outline:3px solid rgba(82,103,224,.45);outline-offset:2px}
+.clinic-map-locate {display:flex;align-items:center;gap:8px;width:auto;height:43px;padding:0 14px;border:1px solid #e1e5f4;border-radius:13px;background:rgba(255,255,255,.96);box-shadow:0 6px 18px rgba(36,49,112,.14);font-size:14px;font-weight:800;white-space:nowrap}
+.clinic-map-locate:disabled {cursor:wait;opacity:.75}
+.map-footer {display:flex;align-items:center;justify-content:space-between;gap:14px;padding:0 4px;color:#707b99;font-size:13px;line-height:1.5}
+.map-footer a {flex:none;color:#6e7895;text-decoration:underline;text-underline-offset:2px}
+.map-footer-success {color:#397564}
+.map-footer-error {color:#9a5260}
+.map-footer-loading {color:#5062bd}
 .appointment-section {
   display:grid;grid-template-columns:.85fr 1.15fr;gap:42px;align-items:center;
   padding:54px;border:1px solid #e6e9f8;border-radius:32px;
@@ -602,12 +609,6 @@ body {font-size:20px}
   .contact-card-copy em {font-size:12px}
   .contact-card-pending .contact-card-copy strong {font-size:14px}
   .map-card {min-height:330px}
-  .map-card iframe {min-height:330px}
-  .map-badge {top:12px;left:12px;padding:10px 12px}
-  .map-badge strong {font-size:14px}
-  .map-badge small {font-size:11px}
-  .map-attribution {left:12px;bottom:13px;font-size:11px}
-  .map-link {right:12px;bottom:12px;font-size:13px}
   .appointment-section {grid-template-columns:1fr;gap:23px;padding:25px 17px;border-radius:24px}
   .appointment-hours strong {font-size:15px}
   .appointment-hours small {font-size:12px}
@@ -622,7 +623,7 @@ body {font-size:20px}
 @media (max-width:960px) {
   .contact-intro {align-items:flex-start;flex-direction:column;gap:20px}
   .contact-layout {grid-template-columns:1fr}
-  .map-card,.map-card iframe {min-height:390px}
+  .map-card {min-height:390px}
 }
 
 @media (max-width:540px) {
@@ -647,10 +648,6 @@ body {font-size:20px}
   .contact-card-copy strong {font-size:15px}
   .contact-card-copy em {font-size:12px}
   .contact-card-pending .contact-card-copy strong {font-size:14px}
-  .map-card,.map-card iframe {min-height:330px}
-  .map-badge {top:12px;left:12px;padding:10px 12px}
-  .map-badge strong {font-size:14px}
-  .map-badge small {font-size:11px}
-  .map-attribution {left:12px;bottom:13px;font-size:11px}
-  .map-link {right:12px;bottom:12px;font-size:13px}
+  .map-card {min-height:330px}
+  .map-footer {align-items:flex-start;font-size:12px}
 }
