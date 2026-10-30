@@ -374,13 +374,34 @@ h1,h2,h3,p { margin-top:0; }
 
 /* Contact details and dedicated appointment request */
 .contact-section {
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
   display:block;
-  padding:0;
+  padding:clamp(28px,4vw,52px);
   margin:0 auto 82px;
-  border-radius:0;
-  background:transparent;
+  border:1px solid #e6e9f8;
+  border-radius:36px;
+  background:linear-gradient(135deg,#f8f9ff 0%,#eef1ff 54%,#f7f4ff 100%);
+  box-shadow:0 22px 60px rgba(48,63,142,.08);
 }
-.contact-intro {max-width:760px;margin:0 auto 34px;text-align:center}
+.contact-section::before {
+  content:"";
+  position:absolute;
+  z-index:-1;
+  width:360px;
+  height:360px;
+  top:-235px;
+  right:-125px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(156,167,255,.25),rgba(156,167,255,0) 70%);
+  pointer-events:none;
+}
+.contact-intro {display:flex;align-items:flex-end;justify-content:space-between;gap:28px;max-width:none;margin:0 0 30px;text-align:left}
+.contact-intro-copy {max-width:700px}
+.contact-eyebrow-row {display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:13px}
+.contact-intro .kicker {margin:0}
+.contact-availability {display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border:1px solid #e0e5fa;border-radius:999px;background:rgba(255,255,255,.78);color:#617095;font-size:13px;font-weight:700}
 .contact-intro h2,.appointment-copy h2 {
   color:#202a68;
   font-family:var(--app-font-serif);
@@ -388,39 +409,53 @@ h1,h2,h3,p { margin-top:0; }
   font-weight:800;
   line-height:1.12;
   letter-spacing:-.055em;
-  margin:13px 0 16px;
+  margin:0 0 13px;
 }
 .contact-intro p,.appointment-copy>p {color:#69718e;font-size:17px;line-height:1.75;margin:0}
-.contact-layout {display:grid;grid-template-columns:1.08fr .92fr;gap:24px;align-items:stretch}
-.contact-card-grid {display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.contact-appointment-cta {display:inline-flex;align-items:center;justify-content:center;gap:12px;flex:none;min-height:50px;padding:0 19px;border-radius:15px;background:#fff;color:#394db8;font-size:15px;font-weight:800;text-decoration:none;box-shadow:0 9px 22px rgba(48,63,142,.1);transition:transform .2s ease,box-shadow .2s ease}
+.contact-appointment-cta:hover {transform:translateY(-2px);box-shadow:0 13px 28px rgba(48,63,142,.15)}
+.contact-layout {display:grid;grid-template-columns:1.08fr .92fr;gap:20px;align-items:stretch}
+.contact-card-grid {display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
 .contact-card {
+  position:relative;
   min-width:0;
-  min-height:126px;
+  min-height:112px;
   display:flex;
   align-items:center;
-  gap:13px;
+  gap:14px;
   padding:18px;
-  border:1px solid #e9ecf8;
-  border-radius:20px;
-  background:rgba(255,255,255,.9);
-  box-shadow:0 10px 28px rgba(48,63,142,.055);
+  border:1px solid rgba(226,230,246,.95);
+  border-radius:19px;
+  background:rgba(255,255,255,.91);
+  box-shadow:0 8px 22px rgba(48,63,142,.055);
   color:#27336f;
   text-decoration:none;
-  transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease;
+  transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease,background .22s ease;
 }
 .contact-card:hover {transform:translateY(-3px);border-color:#cbd2ff;box-shadow:0 15px 32px rgba(48,63,142,.1)}
-.contact-card:nth-child(1),.contact-card:nth-child(2),.contact-card:nth-child(5) {grid-column:1/-1}
-.contact-icon {display:grid;place-items:center;width:48px;height:48px;flex:none;border-radius:16px;background:#eef0ff;color:#5265d5}
+.contact-card:nth-child(1),.contact-card:nth-child(2) {grid-column:1/-1}
+.contact-card:nth-child(n+3) {grid-column:span 2;min-height:136px;flex-direction:column;align-items:flex-start;gap:10px;padding:15px}
+.contact-card-phone {min-height:126px;border-color:transparent;background:linear-gradient(115deg,#3046bb 0%,#5268d5 58%,#7283e4 100%);box-shadow:0 15px 30px rgba(57,76,186,.22);color:#fff}
+.contact-card-phone::after {content:"";position:absolute;right:-42px;top:-75px;width:210px;height:210px;border:1px solid rgba(255,255,255,.14);border-radius:50%;box-shadow:0 0 0 22px rgba(255,255,255,.045),0 0 0 44px rgba(255,255,255,.035);pointer-events:none}
+.contact-card-phone:hover {border-color:transparent;box-shadow:0 19px 38px rgba(57,76,186,.28)}
+.contact-card-phone>* {position:relative;z-index:1}
+.contact-card-phone .contact-icon {background:rgba(255,255,255,.16);color:#fff}
+.contact-card-phone .contact-card-copy small,.contact-card-phone .contact-card-copy strong,.contact-card-phone .contact-card-copy em {color:#fff}
+.contact-card-phone .contact-card-copy small {opacity:.78}
+.contact-card-phone .contact-card-copy strong {font-size:23px}
+.contact-card-phone .contact-card-copy em {opacity:.8}
+.contact-card-action {display:inline-flex;align-items:center;gap:8px;margin-left:auto;padding:11px 13px;border:1px solid rgba(255,255,255,.22);border-radius:13px;background:rgba(255,255,255,.13);color:#fff;font-size:14px;font-weight:800;white-space:nowrap}
+.contact-icon {display:grid;place-items:center;width:46px;height:46px;flex:none;border-radius:15px;background:#eef0ff;color:#5265d5}
 .contact-card-copy {display:grid;gap:4px;min-width:0}
 .contact-card-copy small {color:#7a83a2;font-size:14px;font-weight:700}
 .contact-card-copy strong {color:#29366f;font-family:var(--app-font-serif);font-size:18px;line-height:1.3;overflow-wrap:anywhere}
 .contact-card-copy em {color:#8a91aa;font-size:13px;font-style:normal;line-height:1.35}
-.contact-card-pending {border-style:dashed;background:rgba(255,255,255,.68)}
-.contact-card-pending .contact-icon {background:#f3f4fa;color:#8a93b1}
-.contact-card-pending .contact-card-copy strong {color:#737d9b;font-family:var(--app-font-sans);font-size:16px}
+.contact-card-pending {border-color:rgba(226,230,246,.75);background:rgba(255,255,255,.62)}
+.contact-card-pending .contact-icon {width:40px;height:40px;border-radius:13px;background:#f0f2ff;color:#6b78c5}
+.contact-card-pending .contact-card-copy strong {color:#657197;font-family:var(--app-font-sans);font-size:15px}
 .contact-arrow {margin-left:auto;flex:none;color:#8590b2}
-.map-card {position:relative;min-height:100%;overflow:hidden;border:1px solid #e2e6f5;border-radius:24px;background:#e8ecf7;box-shadow:0 14px 35px rgba(48,63,142,.09)}
-.map-card iframe {position:absolute;inset:0;width:100%;height:100%;min-height:430px;border:0}
+.map-card {position:relative;min-height:410px;overflow:hidden;border:1px solid #e2e6f5;border-radius:24px;background:#e8ecf7;box-shadow:0 14px 35px rgba(48,63,142,.09)}
+.map-card iframe {position:absolute;inset:0;width:100%;height:100%;min-height:410px;border:0}
 .map-badge {
   position:absolute;top:17px;left:17px;display:flex;align-items:center;gap:11px;max-width:calc(100% - 34px);
   padding:12px 15px;border:1px solid rgba(255,255,255,.85);border-radius:16px;
@@ -582,4 +617,40 @@ body {font-size:20px}
   .appointment-form .field input,.appointment-form .field select,.appointment-form .field textarea {font-size:15px}
   .appointment-form .button {font-size:16px}
   .appointment-form .form-message {font-size:14px}
+}
+
+@media (max-width:960px) {
+  .contact-intro {align-items:flex-start;flex-direction:column;gap:20px}
+  .contact-layout {grid-template-columns:1fr}
+  .map-card,.map-card iframe {min-height:390px}
+}
+
+@media (max-width:540px) {
+  .contact-section {padding:25px 17px;margin-bottom:64px;border-radius:26px}
+  .contact-intro {gap:17px;margin-bottom:22px}
+  .contact-eyebrow-row {gap:8px;margin-bottom:12px}
+  .contact-availability {font-size:12px;padding:6px 9px}
+  .contact-intro h2 {font-size:36px;margin-bottom:10px}
+  .contact-intro p {font-size:16px;line-height:1.65}
+  .contact-appointment-cta {width:100%;min-height:48px}
+  .contact-card-grid {grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .contact-card {min-height:105px;padding:13px;border-radius:16px}
+  .contact-card:nth-child(1),.contact-card:nth-child(2) {grid-column:1/-1}
+  .contact-card:nth-child(n+3) {grid-column:span 1;min-height:135px;padding:13px}
+  .contact-card-phone {min-height:126px;flex-wrap:wrap;gap:10px}
+  .contact-card-phone .contact-icon {width:40px;height:40px;border-radius:13px}
+  .contact-card-phone .contact-card-copy {flex:1;min-width:155px}
+  .contact-card-phone .contact-card-copy strong {font-size:21px}
+  .contact-card-action {margin-left:auto;padding:9px 11px;font-size:13px}
+  .contact-card:nth-child(5) {grid-column:1/-1;min-height:98px;flex-direction:row;align-items:center}
+  .contact-card-copy small {font-size:13px}
+  .contact-card-copy strong {font-size:15px}
+  .contact-card-copy em {font-size:12px}
+  .contact-card-pending .contact-card-copy strong {font-size:14px}
+  .map-card,.map-card iframe {min-height:330px}
+  .map-badge {top:12px;left:12px;padding:10px 12px}
+  .map-badge strong {font-size:14px}
+  .map-badge small {font-size:11px}
+  .map-attribution {left:12px;bottom:13px;font-size:11px}
+  .map-link {right:12px;bottom:12px;font-size:13px}
 }

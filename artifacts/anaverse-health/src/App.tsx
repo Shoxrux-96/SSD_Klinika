@@ -293,32 +293,40 @@ function App() {
 
         <section className="site-shell section contact-section" id="contact" aria-labelledby="contact-title">
           <div className="contact-intro">
-            <span className="kicker">Biz bilan bog‘laning</span>
-            <h2 id="contact-title">Sizga yordam berishga tayyormiz.</h2>
-            <p>Savolingiz bo‘lsa yoki klinikaga tashrif rejalashtirsangiz, o‘zingizga qulay aloqa usulini tanlang.</p>
+            <div className="contact-intro-copy">
+              <div className="contact-eyebrow-row">
+                <span className="kicker">Biz bilan bog‘laning</span>
+                <span className="contact-availability"><Clock3 size={15} /> Har kuni, 24 soat</span>
+              </div>
+              <h2 id="contact-title">Har doim yoningizdamiz.</h2>
+              <p>Savolingiz bo‘lsa yoki klinikaga tashrif rejalashtirsangiz, sizga qulay aloqa usulini tanlang.</p>
+            </div>
+            <a className="contact-appointment-cta" href="#appointment">
+              Qabulga yozilish <ArrowRight size={17} />
+            </a>
           </div>
           <div className="contact-layout">
             <div className="contact-card-grid" aria-label="Klinika bilan aloqa ma’lumotlari">
-              <a className="contact-card" href="tel:+998712345678" data-testid="card-contact-phone">
+              <a className="contact-card contact-card-phone" href="tel:+998712345678" data-testid="card-contact-phone">
                 <span className="contact-icon"><Phone size={21} /></span>
-                <span className="contact-card-copy"><small>Telefon</small><strong>+998 71 234 56 78</strong><em>Har kuni, 24 soat</em></span>
-                <ArrowRight className="contact-arrow" size={17} />
+                <span className="contact-card-copy"><small>Telefon orqali bog‘lanish</small><strong>+998 71 234 56 78</strong><em>Qo‘ng‘iroq uchun bosing</em></span>
+                <span className="contact-card-action">Qo‘ng‘iroq qilish <ArrowRight size={16} /></span>
               </a>
               <div className="contact-card" data-testid="card-contact-address">
                 <span className="contact-icon"><MapPin size={21} /></span>
-                <span className="contact-card-copy"><small>Manzil</small><strong>Toshkent shahri, O‘zbekiston</strong><em>Aniq manzil keyin qo‘shiladi</em></span>
+                <span className="contact-card-copy"><small>Manzil</small><strong>Toshkent shahri, O‘zbekiston</strong><em>Aniq manzil kiritilganda xarita yangilanadi</em></span>
               </div>
               <div className="contact-card contact-card-pending" data-testid="card-contact-email">
                 <span className="contact-icon"><Mail size={21} /></span>
-                <span className="contact-card-copy"><small>Email</small><strong>Ma’lumot keyin qo‘shiladi</strong><em>Klinika email manzili</em></span>
+                <span className="contact-card-copy"><small>Email</small><strong>Keyin qo‘shiladi</strong><em>Klinika email manzili</em></span>
               </div>
               <div className="contact-card contact-card-pending" data-testid="card-contact-telegram">
                 <span className="contact-icon"><Send size={21} /></span>
-                <span className="contact-card-copy"><small>Telegram</small><strong>Havola keyin qo‘shiladi</strong><em>Rasmiy Telegram sahifasi</em></span>
+                <span className="contact-card-copy"><small>Telegram</small><strong>Havola keyin qo‘shiladi</strong><em>Rasmiy sahifa</em></span>
               </div>
               <div className="contact-card contact-card-pending" data-testid="card-contact-instagram">
                 <span className="contact-icon"><Instagram size={21} /></span>
-                <span className="contact-card-copy"><small>Instagram</small><strong>Havola keyin qo‘shiladi</strong><em>Rasmiy Instagram sahifasi</em></span>
+                <span className="contact-card-copy"><small>Instagram</small><strong>Havola keyin qo‘shiladi</strong><em>Rasmiy sahifa</em></span>
               </div>
             </div>
             <div className="map-card" data-testid="map-openstreetmap">
@@ -331,7 +339,7 @@ function App() {
               />
               <div className="map-badge">
                 <span className="map-pin"><MapPin size={18} /></span>
-                <span><strong>Toshkent markazi</strong><small>Klinikaning aniq manzili keyin belgilanadi</small></span>
+                <span><strong>Toshkent markazi</strong><small>Joylashuv hozircha taxminiy</small></span>
               </div>
               <a className="map-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
                 © OpenStreetMap contributors
