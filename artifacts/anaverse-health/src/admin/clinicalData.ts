@@ -20,6 +20,11 @@ export type AdmissionTests = {
 };
 export type Treatment = {
   id: string;
+  // Asosiy identifikator: patients.id (UUID). Eski yozuvlar uchun ism-familya bo'lishi mumkin.
+  patientId?: string;
+  // Qo'shimcha identifikator (xavfsizlik/legacy fallback)
+  patientPassport?: string;
+  // Ko'rsatish uchun ism (hamma UI shu yerdan oladi)
   patient: string;
   diagnosis: string;
   service?: string;
@@ -53,11 +58,15 @@ export type Treatment = {
 };
 
 // API row shape → frontend Treatment
+// `patient_id` DB maydoni endi UUID'ni ushlaydi; eski yozuvlar uchun esa ism qolishi mumkin.
+// Ism-familya alohida `notes.patientName` ichida saqlanadi (UI uchun).
 function trFromApi(row: any): Treatment {
   const extra = row.notes ? safeJson(row.notes) : {};
   return {
     id: row.id,
-    patient: row.patientId ?? '',
+    patientId: row.patientId ?? undefined,
+    patientPassport: row.patientPassport ?? extra.patientPassport,
+    patient: extra.patientName ?? row.patientId ?? '', // ko'rsatish uchun
     doctor: row.doctorId ?? '',
     diagnosis: row.diagnosis ?? '',
     service: row.serviceId ?? undefined,
@@ -70,12 +79,15 @@ function trFromApi(row: any): Treatment {
 }
 function trToApi(t: Partial<Treatment>) {
   const {
-    id, patient, doctor, diagnosis, service, amount, date, status, methods,
+    id, patient, patientId, patientPassport, doctor, diagnosis, service, amount, date, status, methods,
     ...rest
   } = t as any;
+  // Agar yangi yozuv UUID bilan kelgan bo'lsa, ism `notes.patientName` ga ketadi
+  const mergedExtra = { ...rest, ...(patient !== undefined ? { patientName: patient } : {}) };
   return {
     ...(id ? { id } : {}),
-    ...(patient !== undefined ? { patientId: patient } : {}),
+    ...(patientId !== undefined ? { patientId } : (patient !== undefined ? { patientId: patient } : {})),
+    ...(patientPassport !== undefined ? { patientPassport } : {}),
     ...(doctor !== undefined ? { doctorId: doctor } : {}),
     ...(diagnosis !== undefined ? { diagnosis } : {}),
     ...(service !== undefined ? { serviceId: service || null } : {}),
@@ -83,7 +95,7 @@ function trToApi(t: Partial<Treatment>) {
     ...(date !== undefined ? { date } : {}),
     ...(status !== undefined ? { status } : {}),
     ...(methods !== undefined ? { procedure: methods } : {}),
-    notes: Object.keys(rest).length ? JSON.stringify(rest) : null,
+    notes: Object.keys(mergedExtra).length ? JSON.stringify(mergedExtra) : null,
   };
 }
 function safeJson(s: string): any { try { return JSON.parse(s); } catch { return {}; } }
@@ -131,28 +143,41 @@ export async function removeTreatment(id: string) {
 }
 
 /* ---------------- Prescriptions ---------------- */
-export type Prescription = { id: string; patient: string; doctor: string; meds: string; date: string };
+export type Prescription = {
+  id: string;
+  patientId?: string;      // UUID (yangi yozuvlar)
+  patientPassport?: string; // qo'shimcha identifikator
+  patient: string;          // ko'rsatish uchun ism
+  doctor: string;
+  meds: string;
+  date: string;
+};
 
 function rxFromApi(row: any): Prescription {
   const meds = Array.isArray(row.medications)
     ? row.medications.map((m: any) => (typeof m === 'string' ? m : m?.name ?? '')).join(', ')
     : row.notes ?? '';
+  const extra = row.notes && !Array.isArray(row.medications) ? {} : safeJson(row.notes ?? '{}');
   return {
     id: row.id,
-    patient: row.patientId ?? '',
+    patientId: row.patientId ?? undefined,
+    patientPassport: row.patientPassport ?? extra.patientPassport,
+    patient: extra.patientName ?? row.patientId ?? '',
     doctor: row.doctorId ?? '',
     meds,
     date: row.date,
   };
 }
 function rxToApi(p: Partial<Prescription>) {
-  const { id, patient, doctor, meds, date } = p as any;
+  const { id, patient, patientId, patientPassport, doctor, meds, date } = p as any;
   return {
     ...(id ? { id } : {}),
-    ...(patient !== undefined ? { patientId: patient } : {}),
+    ...(patientId !== undefined ? { patientId } : (patient !== undefined ? { patientId: patient } : {})),
+    ...(patientPassport !== undefined ? { patientPassport } : {}),
     ...(doctor !== undefined ? { doctorId: doctor } : {}),
     ...(date !== undefined ? { date } : {}),
     ...(meds !== undefined ? { medications: String(meds).split(/\s*,\s*/).filter(Boolean) } : {}),
+    ...(patient !== undefined ? { notes: JSON.stringify({ patientName: patient }) } : {}),
   };
 }
 
@@ -204,7 +229,9 @@ export async function removePrescription(id: string) {
 /* ---------------- Lab tests (read-only here; writes happen in Laboratory page) ---------------- */
 export type LabTestRecord = {
   id: string;
-  patientName: string;
+  patientId?: string;       // UUID
+  patientPassport?: string; // qo'shimcha identifikator
+  patientName: string;      // ko'rsatish uchun
   testType: string;
   templateId?: string;
   status: string;
@@ -220,7 +247,9 @@ function labFromApi(row: any): LabTestRecord {
   const extra = row.result ? safeJson(row.result) : {};
   return {
     id: row.id,
-    patientName: row.patientId ?? '',
+    patientId: row.patientId ?? undefined,
+    patientPassport: row.patientPassport ?? extra.patientPassport,
+    patientName: extra.patientName ?? row.patientId ?? '',
     testType: row.testName,
     status: row.status,
     createdAt: Number(row.createdAt) || Date.now(),
@@ -257,12 +286,18 @@ export function useLabTests(): LabTestRecord[] {
 export async function addLabTest(t: Omit<LabTestRecord, 'id' | 'createdAt'> & { id?: string }) {
   const body = {
     id: t.id ?? `LAB-${Date.now().toString(36).toUpperCase()}`,
-    patientId: t.patientName,
+    patientId: t.patientId ?? t.patientName, // UUID bo'lsa UUID, aks holda ism (legacy)
+    patientPassport: t.patientPassport,
     doctorId: t.labDoctor ?? null,
     testName: t.testType,
     status: t.status ?? 'yangi',
     date: t.docDate ?? new Date().toISOString().slice(0, 10),
-    result: JSON.stringify({ readyAt: t.readyAt, results: t.results, laborant: t.laborant, templateId: t.templateId }),
+    result: JSON.stringify({
+      patientName: t.patientName,
+      patientPassport: t.patientPassport,
+      readyAt: t.readyAt, results: t.results,
+      laborant: t.laborant, templateId: t.templateId,
+    }),
   };
   const created = await api<any>('/lab-results', { method: 'POST', body: JSON.stringify(body) });
   labState = [labFromApi(created), ...labState];
@@ -273,12 +308,16 @@ export async function updateLabTest(id: string, patch: Partial<LabTestRecord>) {
   const existing = labState.find((x) => x.id === id);
   const merged = { ...existing, ...patch } as LabTestRecord;
   const body: any = {};
-  if (patch.patientName !== undefined) body.patientId = patch.patientName;
+  if (patch.patientId !== undefined) body.patientId = patch.patientId;
+  else if (patch.patientName !== undefined && !merged.patientId) body.patientId = patch.patientName;
+  if (patch.patientPassport !== undefined) body.patientPassport = patch.patientPassport;
   if (patch.labDoctor !== undefined) body.doctorId = patch.labDoctor;
   if (patch.testType !== undefined) body.testName = patch.testType;
   if (patch.status !== undefined) body.status = patch.status;
   if (patch.docDate !== undefined) body.date = patch.docDate;
   body.result = JSON.stringify({
+    patientName: merged.patientName,
+    patientPassport: merged.patientPassport,
     readyAt: merged.readyAt, results: merged.results,
     laborant: merged.laborant, templateId: merged.templateId,
   });

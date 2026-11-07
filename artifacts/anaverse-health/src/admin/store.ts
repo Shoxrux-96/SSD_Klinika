@@ -211,13 +211,28 @@ export async function setQueueStatus(id: string, status: QueueItem['status']) {
 }
 
 // --- Patients ---
-export async function addPatient(p: { fullName: string; phone: string; address: string; region?: string; district?: string; gender?: Gender }) {
-  const created = await api<Patient>('/patients', { method: 'POST', body: JSON.stringify(p) });
+function normalizePassport(v?: string | null) {
+  return (v ?? '').replace(/\s+/g, '').toUpperCase() || undefined;
+}
+export async function addPatient(p: {
+  fullName: string;
+  phone: string;
+  address: string;
+  region?: string;
+  district?: string;
+  gender?: Gender;
+  birthDate?: string;
+  passport?: string;
+}): Promise<Patient> {
+  const body = { ...p, passport: normalizePassport(p.passport) };
+  const created = await api<Patient>('/patients', { method: 'POST', body: JSON.stringify(body) });
   set('patients', (prev) => [created, ...prev]);
+  return created;
 }
 export async function updatePatient(id: string, patch: Partial<Omit<Patient, 'id' | 'addedAt'>>) {
-  set('patients', (prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
-  await api(`/patients/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
+  const normalized = { ...patch, ...(patch.passport !== undefined ? { passport: normalizePassport(patch.passport) } : {}) };
+  set('patients', (prev) => prev.map((p) => (p.id === id ? { ...p, ...normalized } : p)));
+  await api(`/patients/${id}`, { method: 'PATCH', body: JSON.stringify(normalized) });
 }
 export const archivePatient   = (id: string) => updatePatient(id, { archived: true });
 export const unarchivePatient = (id: string) => updatePatient(id, { archived: false });

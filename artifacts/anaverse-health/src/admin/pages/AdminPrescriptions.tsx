@@ -119,11 +119,22 @@ function PrescriptionModal({
     if (!canSave) return;
     setBusy(true);
     try {
+      const name = patient.trim();
+      const selected = patients.find((p) => p.fullName === name);
+      const passport = (selected?.passport ?? '').replace(/\s+/g, '').toUpperCase() || existing?.patientPassport;
+      const common = {
+        patient: name,
+        patientId: selected?.id ?? existing?.patientId,
+        patientPassport: passport,
+        doctor: doctor.trim(),
+        meds: meds.trim(),
+        date,
+      };
       let row: Prescription | null;
       if (existing) {
-        row = await updatePrescription(existing.id, { patient: patient.trim(), doctor: doctor.trim(), meds: meds.trim(), date });
+        row = await updatePrescription(existing.id, common);
       } else {
-        row = await addPrescription({ patient: patient.trim(), doctor: doctor.trim(), meds: meds.trim(), date });
+        row = await addPrescription(common);
       }
       if (row && onSaved) onSaved(row);
       else onClose();

@@ -22,6 +22,7 @@ import { useAuth } from '../../auth/AuthContext';
 
 const ROLES_CAN_ADD_PATIENT = new Set(['admin', 'registrator']);
 import { usePagination, TablePagination } from '../components/TablePagination';
+import { DentalChart } from '../components/DentalChart';
 
 type DateFilter = 'all' | 'today' | 'week' | 'month' | 'year';
 
@@ -800,8 +801,21 @@ function MedicalCardModal({ patient, onClose }: { patient: Patient; onClose: () 
   const prescriptions = usePrescriptions();
   const labTests = useLabTests();
 
+  // Yozuvni ushbu bemor bilan bog'lashni 3 qatlamda tekshiramiz:
+  // 1) patientId === patient.id (UUID — eng ishonchli)
+  // 2) patientPassport === patient.passport (ikkinchi himoya qatlami)
+  // 3) legacy fallback — ism-familya bo'yicha
+  const normPassport = (v?: string | null) => (v ?? '').replace(/\s+/g, '').toUpperCase();
+  const myPassport = normPassport(patient.passport);
+  const myNameLower = patient.fullName.toLowerCase();
+  const belongs = (rec: { patientId?: string; patientPassport?: string; patient?: string; patientName?: string }) => {
+    if (rec.patientId && rec.patientId === patient.id) return true;
+    if (myPassport && rec.patientPassport && normPassport(rec.patientPassport) === myPassport) return true;
+    const legacy = rec.patient ?? rec.patientName ?? '';
+    return legacy.toLowerCase() === myNameLower;
+  };
+
   const bundles = useMemo<VisitBundle[]>(() => {
-    const name = patient.fullName;
     const byDate = new Map<string, VisitBundle>();
     const ensure = (date: string) => {
       let b = byDate.get(date);
@@ -812,25 +826,25 @@ function MedicalCardModal({ patient, onClose }: { patient: Patient; onClose: () 
       return b;
     };
     for (const t of treatments) {
-      if (t.patient !== name) continue;
+      if (!belongs(t)) continue;
       const b = ensure(t.date);
       b.treatments.push(t);
       if (t.doctor) b.doctors.add(t.doctor);
     }
     for (const p of prescriptions) {
-      if (p.patient !== name) continue;
+      if (!belongs(p)) continue;
       const b = ensure(p.date);
       b.prescriptions.push(p);
       if (p.doctor) b.doctors.add(p.doctor);
     }
     for (const l of labTests) {
-      if (l.patientName !== name) continue;
+      if (!belongs(l)) continue;
       const b = ensure(labTestDate(l));
       b.labTests.push(l);
       if (l.labDoctor) b.doctors.add(l.labDoctor);
     }
     return Array.from(byDate.values()).sort((a, b) => b.date.localeCompare(a.date));
-  }, [patient.fullName, treatments, prescriptions, labTests]);
+  }, [patient.id, patient.fullName, patient.passport, treatments, prescriptions, labTests]);
 
   const sectionsFor = (b: VisitBundle): Record<SectionKey, string> => ({
     complaints:    joinUniq(b.treatments.map((t) => t.complaints ?? '')),
@@ -842,6 +856,7 @@ function MedicalCardModal({ patient, onClose }: { patient: Patient; onClose: () 
   });
 
   const [openDate, setOpenDate] = useState<string | null>(bundles[0]?.date ?? null);
+  const [tab, setTab] = useState<'history' | 'dental'>('history');
 
   const initials = patient.fullName.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
   const age = patient.birthDate ? calcAge(patient.birthDate) : null;
@@ -884,6 +899,19 @@ function MedicalCardModal({ patient, onClose }: { patient: Patient; onClose: () 
         </div>
 
         <div className="med-card-body">
+          <div className="med-card-tabs no-print" style={{ display: 'flex', gap: 8, marginBottom: 14, borderBottom: '1px solid #e2e8f0', paddingBottom: 8 }}>
+            <button type="button"
+              className={`admin-btn admin-btn-${tab === 'history' ? 'primary' : 'ghost'} sm`}
+              onClick={() => setTab('history')}>Koʻrik tarixi</button>
+            <button type="button"
+              className={`admin-btn admin-btn-${tab === 'dental' ? 'primary' : 'ghost'} sm`}
+              onClick={() => setTab('dental')}>Tish xaritasi</button>
+          </div>
+
+          {tab === 'dental' ? (
+            <DentalChart patient={patient} />
+          ) : (
+          <>
           {bundles.length === 0 && (
             <div className="med-card-empty">
               <FileHeart size={42} />
@@ -945,6 +973,8 @@ function MedicalCardModal({ patient, onClose }: { patient: Patient; onClose: () 
               );
             })}
           </div>
+          </>
+          )}
         </div>
 
         <div className="appt-modal-foot patient-view-foot no-print">
