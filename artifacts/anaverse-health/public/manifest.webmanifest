@@ -1,0 +1,18 @@
+{
+  "name": "SSD Klinika — Sirius Stoma Dent Diagnostika markazi",
+  "short_name": "SSD Klinika",
+  "description": "Xorazm, Shovotdagi zamonaviy stomatologiya va diagnostika markazi — ssdclinic.uz",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#0ea5a3",
+  "lang": "uz",
+  "icons": [
+    { "src": "/favicon-32.png", "sizes": "32x32", "type": "image/png", "purpose": "any" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

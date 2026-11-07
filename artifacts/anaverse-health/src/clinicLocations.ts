@@ -5,5 +5,11 @@ export type ClinicLocation = {
   position: [number, number];
 };
 
-// Add verified branch addresses and coordinates here when the clinic provides them.
-export const clinicLocations: ClinicLocation[] = [];
+export const clinicLocations: ClinicLocation[] = [
+  {
+    id: 'ssd-shovot',
+    name: 'SSD Klinika — Sirius Stoma Dent Diagnostika markazi',
+    address: 'Shovot tumani, J. Manguberdi ko‘chasi, 28-A uy',
+    position: [41.654459, 60.290992],
+  },
+];

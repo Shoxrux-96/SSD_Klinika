@@ -63,6 +63,21 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, 'dist/public'),
     emptyOutDir: true,
+    chunkSizeWarningLimit: 900,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+          if (id.includes('three') || id.includes('@react-three')) return 'three';
+          if (id.includes('leaflet') || id.includes('react-leaflet')) return 'leaflet';
+          if (id.includes('recharts') || id.includes('d3-')) return 'charts';
+          if (id.includes('@radix-ui')) return 'radix';
+          if (id.includes('react-router') || id.includes('wouter')) return 'router';
+          if (id.includes('framer-motion')) return 'motion';
+          return 'vendor';
+        },
+      },
+    },
   },
   server: {
     port,
@@ -71,6 +86,12 @@ export default defineConfig({
     allowedHosts: true,
     fs: {
       strict: true,
+    },
+    proxy: {
+      '/api': {
+        target: process.env.API_URL ?? 'http://localhost:4000',
+        changeOrigin: true,
+      },
     },
   },
   preview: {

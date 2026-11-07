@@ -1,0 +1,106 @@
+# /etc/nginx/sites-available/ssd-klinika
+# Symlink: /etc/nginx/sites-enabled/ssd-klinika
+# certbot --nginx -d ssdclinic.uz -d www.ssdclinic.uz   # HTTPS uchun
+
+# --- Rate limit zonalari (DDoS/DoS himoyasi) ---
+# Har IP uchun ikki daraja: umumiy (10 r/s burst=20), auth (1 r/s burst=5)
+limit_req_zone  $binary_remote_addr  zone=ssd_api:10m   rate=10r/s;
+limit_req_zone  $binary_remote_addr  zone=ssd_auth:10m  rate=1r/s;
+# IP bo'yicha parallel ulanish cheklovi
+limit_conn_zone $binary_remote_addr  zone=ssd_conn:10m;
+
+upstream ssd_klinika_api {
+    server 127.0.0.1:5000;
+    keepalive 32;
+}
+
+# HTTP → HTTPS redirekti (certbot avtomatik qo'shadi). Muddatli konfiguratsiya:
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ssdclinic.uz www.ssdclinic.uz;
+
+    client_max_body_size 2M;       # DoS: katta body'larni bloklash
+    client_body_timeout 10s;
+    client_header_timeout 10s;
+    send_timeout 10s;
+    keepalive_timeout 30s;
+    reset_timedout_connection on;
+
+    # IP bo'yicha ulanishni cheklash (slowloris himoyasi)
+    limit_conn ssd_conn 30;
+
+    # Fake / scan so'rovlarini kesish
+    server_tokens off;
+
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript image/svg+xml application/xml;
+    gzip_min_length 1024;
+
+    # Bloklangan User-Agent'lar (oddiy bot'lar)
+    if ($http_user_agent ~* (nikto|sqlmap|fimap|nessus|whatweb|openvas|jbrofuzz|libwhisker|perl|wget|curl|python-requests|go-http-client|masscan|zgrab)) {
+        return 444;
+    }
+
+    # --- Auth endpoint — qattiq rate-limit (brute-force himoyasi) ---
+    location = /api/auth/login {
+        limit_req zone=ssd_auth burst=5 nodelay;
+        limit_req_status 429;
+        proxy_pass http://ssd_klinika_api;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        proxy_read_timeout 15s;
+        proxy_send_timeout 15s;
+    }
+
+    # --- Asosiy API reverse-proxy ---
+    location /api/ {
+        limit_req zone=ssd_api burst=20 nodelay;
+        limit_req_status 429;
+        proxy_pass http://ssd_klinika_api;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        proxy_read_timeout 60s;
+        proxy_send_timeout 60s;
+    }
+
+    # Admin/clinic/reception/cashier SPA routelar — xavfsiz bo'lsin deb admin paneli URL'lariga ichki statik beriladi
+    root /opt/ssd-klinika/artifacts/anaverse-health/dist/public;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Statik fayllar — uzoq muddat cache + immutable
+    location ~* \.(?:css|js|woff2?|png|jpe?g|gif|svg|ico|webp|webmanifest)$ {
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000, immutable";
+        try_files $uri =404;
+    }
+
+    # robots/sitemap
+    location = /robots.txt  { try_files $uri =404; access_log off; }
+    location = /sitemap.xml { try_files $uri =404; access_log off; }
+
+    # Yashirin / xavfli pathlarni bloklash
+    location ~ /\.(git|env|svn|htaccess) { deny all; return 404; }
+    location ~ /(wp-admin|wp-login|phpmyadmin) { deny all; return 404; }
+
+    # Xavfsizlik sarlavhalari (TLS vaqtida certbot HSTS ni qo'shadi)
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "no-referrer" always;
+    add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+
+    access_log /var/log/nginx/ssd-klinika.access.log;
+    error_log  /var/log/nginx/ssd-klinika.error.log warn;
+}

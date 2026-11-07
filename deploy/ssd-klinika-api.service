@@ -1,0 +1,34 @@
+[Unit]
+Description=SSD Klinika API (Node.js)
+Documentation=https://github.com/
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+# O'zgartiring: VPS'da loyihaning joylashgan joyi va foydalanuvchi
+User=ssd
+Group=ssd
+WorkingDirectory=/opt/ssd-klinika
+EnvironmentFile=/opt/ssd-klinika/.env
+# Node.js bo'yicha PATH (nvm bilan ishlatilayotgan bo'lsa to'liq yo'lni bering)
+ExecStart=/usr/bin/node --enable-source-maps /opt/ssd-klinika/artifacts/api-server/dist/index.mjs
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=15
+
+# Logs → journalctl -u ssd-klinika-api
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ssd-klinika-api
+
+# Xavfsizlik
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/ssd-klinika/.logs
+
+[Install]
+WantedBy=multi-user.target

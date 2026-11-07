@@ -1,2 +1,10 @@
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /clinic
+Disallow: /reception
+Disallow: /cashier
+Disallow: /api/
+
+Sitemap: https://ssdclinic.uz/sitemap.xml
+Host: https://ssdclinic.uz
