@@ -6,9 +6,12 @@ export type Appointment = {
   id: string;
   date: string;
   time: string;
-  patient: string;
-  doctor: string;
-  service: string;
+  patient: string;        // display: bemor ismi
+  patientId?: string;     // patients.id (UUID)
+  doctor: string;         // display: shifokor ismi
+  doctorId?: string;      // employees.id
+  service: string;        // display: xizmat nomi
+  serviceId?: string;     // services.id
   status: Status;
 };
 
@@ -16,8 +19,11 @@ export type QueueItem = {
   id: string;
   number: string;
   patient: string;
+  patientId?: string;
   doctor: string;
+  doctorId?: string;
   service: string;
+  serviceId?: string;
   addedAt: number;
   status: 'navbatda' | 'kabinetda' | 'tugatildi';
 };
@@ -53,6 +59,8 @@ export type Service = {
 };
 
 export type EmployeeCategory = 'medical' | 'service';
+export type EmployeeRole = 'admin' | 'shifokor' | 'laborant' | 'registrator' | 'kassir' | 'buxgalter' | 'oddiy';
+
 export type Employee = {
   id: string;
   category: EmployeeCategory;
@@ -66,6 +74,11 @@ export type Employee = {
   diploma: string;
   addedAt: number;
   archived: boolean;
+  // Auth maydonlari — hodim tizimga kirishi uchun
+  username?: string | null;
+  role?: EmployeeRole;
+  // Login o'rnatilganmi (passwordHash mavjudmi)
+  hasPassword?: boolean;
 };
 
 export type ServiceAssignment = { employeeId: string; serviceId: string };
@@ -174,12 +187,22 @@ export async function setAppointmentStatus(id: string, status: Status) {
 
   if (status === 'keldi' && !state.queue.some((q) => q.id === id)) {
     const q: QueueItem = {
-      id, number: nextQueueNumber(), patient: target.patient, doctor: target.doctor,
-      service: target.service, addedAt: Date.now(), status: 'navbatda',
+      id, number: nextQueueNumber(),
+      patient: target.patient, patientId: target.patientId,
+      doctor: target.doctor, doctorId: target.doctorId,
+      service: target.service, serviceId: target.serviceId,
+      addedAt: Date.now(), status: 'navbatda',
     };
     const created = await api<QueueItem>('/queue', { method: 'POST', body: JSON.stringify(q) });
     set('queue', (prev) => [...prev, created]);
     printQueueTicket(created);
+
+    // Oqim avtomatizatsiyasi: "keldi" bosilganda — qabul uchun qoralama davolash
+    // yozuvi (rejalashtirildi statusida) ham yaratiladi. Shu orqali shifokor
+    // paneliga darhol ko'rinadi va qayta ma'lumot kiritish shart emas.
+    try { await ensureDraftTreatmentForAppointment(target); } catch (e) {
+      console.warn('draft treatment creation failed', e);
+    }
   } else if (status !== 'keldi') {
     const existing = state.queue.find((q) => q.patient === target.patient);
     if (existing) {
@@ -187,6 +210,47 @@ export async function setAppointmentStatus(id: string, status: Status) {
       set('queue', (prev) => prev.filter((q) => q.id !== existing.id));
     }
   }
+}
+
+// Qabul "keldi" bo'lganda avtomatik qoralama davolash yozuvini qo'shadi.
+// Bir qabul uchun bir marta — takrorlanmaydi (appointmentId notes ichida saqlanadi).
+async function ensureDraftTreatmentForAppointment(a: Appointment) {
+  // Takrorlanmasligi uchun treatment yozuvlarini bir marta tekshiramiz
+  let existing: any[] = [];
+  try { existing = await api<any[]>('/treatments'); } catch { return; }
+  const already = existing.some((t) => {
+    try {
+      const n = typeof t.notes === 'string' ? JSON.parse(t.notes) : t.notes;
+      return n?.appointmentId === a.id;
+    } catch { return false; }
+  });
+  if (already) return;
+
+  const svc = state.services.find((s) => s.id === a.serviceId || s.name === a.service);
+  const amount = svc ? (svc.somValue ?? svc.price) : 0;
+  const patient = state.patients.find((p) => p.id === a.patientId || p.fullName === a.patient);
+
+  const payload = {
+    id: `T-${Date.now().toString(36).toUpperCase()}`,
+    patientId: a.patientId ?? patient?.id ?? a.patient,
+    patientPassport: patient?.passport,
+    doctorId: a.doctor,
+    serviceId: a.serviceId ?? null,
+    date: a.date,
+    diagnosis: '',
+    procedure: null,
+    price: amount,
+    status: 'rejalashtirildi',
+    notes: JSON.stringify({
+      patientName: a.patient,
+      service: a.service,
+      services: [a.service],
+      amount,
+      appointmentId: a.id,
+    }),
+    createdAt: Date.now(),
+  };
+  await api('/treatments', { method: 'POST', body: JSON.stringify(payload) });
 }
 
 // --- Queue ---
@@ -242,11 +306,18 @@ export async function deletePatient(id: string) {
 }
 
 // --- Employees ---
-export async function addEmployee(e: Omit<Employee, 'id' | 'addedAt' | 'archived'>) {
+// Login maydonlari (`username`, `role`, `password`) ixtiyoriy — faqat admin
+// hodimga tizimga kirish imkonini bermoqchi bo'lsa to'ldiradi.
+export async function addEmployee(
+  e: Omit<Employee, 'id' | 'addedAt' | 'archived' | 'hasPassword'> & { password?: string },
+) {
   const created = await api<Employee>('/employees', { method: 'POST', body: JSON.stringify(e) });
   set('employees', (prev) => [created, ...prev]);
 }
-export async function updateEmployee(id: string, patch: Partial<Omit<Employee, 'id' | 'addedAt'>>) {
+export async function updateEmployee(
+  id: string,
+  patch: Partial<Omit<Employee, 'id' | 'addedAt' | 'hasPassword'>> & { password?: string },
+) {
   set('employees', (prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)));
   await api(`/employees/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
 }

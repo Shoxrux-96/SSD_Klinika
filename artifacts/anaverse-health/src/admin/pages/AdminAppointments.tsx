@@ -684,7 +684,15 @@ function AppointmentModal({
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!patient.trim() || !service) return;
-    onSave({ patient: patient.trim(), date, time, doctor, service });
+    // UUID'larni qidirib topamiz — tarixiy barqarorlik uchun
+    const emp = doctorEmployees.find((e) => e.fullName === doctor);
+    const svc = availableServices.find((s) => s.name === service);
+    onSave({
+      patient: patient.trim(),
+      date, time, doctor, service,
+      doctorId: emp?.id,
+      serviceId: svc?.id,
+    });
   };
 
   return (

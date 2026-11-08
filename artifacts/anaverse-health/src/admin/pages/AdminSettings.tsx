@@ -13,6 +13,7 @@ import {
 import {
   updatePromoSettings, usePromoSettings, usePromoCodes, removePromoCode,
 } from '../../promoSettings';
+import { useClinicInfo, updateClinicInfo } from '../../clinicSettings';
 
 const PLATFORMS: { value: SocialPlatform; label: string }[] = [
   { value: 'telegram',  label: 'Telegram' },
@@ -54,13 +55,7 @@ export function AdminSettings() {
 
       {tab === 'clinic' && (
       <div>
-      <section className="admin-card">
-        <div className="admin-card-head"><div><h2>Klinika maʼlumotlari</h2><small>Rasmiy nomi</small></div></div>
-        <div className="admin-form-grid">
-          <label className="admin-field"><span>Klinika nomi</span><input type="text" defaultValue="SSD Klinika — Sirius Stoma Dent Diagnostika markazi" /></label>
-          <label className="admin-field"><span>Email</span><input type="email" defaultValue="info@ssdklinika.uz" /></label>
-        </div>
-      </section>
+      <ClinicInfoPanel />
 
       <ClinicLogoPanel />
 
@@ -673,6 +668,40 @@ function ClinicLogoPanel() {
             butunlay o‘chirish uchun "Logoni o‘chirish".
           </small>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function ClinicInfoPanel() {
+  const info = useClinicInfo();
+  return (
+    <section className="admin-card">
+      <div className="admin-card-head">
+        <div>
+          <h2>Klinika maʼlumotlari</h2>
+          <small>Rasmiy nom va asosiy email — avtomatik saqlanadi</small>
+        </div>
+      </div>
+      <div className="admin-form-grid">
+        <label className="admin-field">
+          <span>Klinika nomi</span>
+          <input
+            type="text"
+            value={info.name}
+            onChange={(e) => updateClinicInfo({ name: e.target.value })}
+            placeholder="SSD Klinika — Sirius Stoma Dent Diagnostika markazi"
+          />
+        </label>
+        <label className="admin-field">
+          <span>Email</span>
+          <input
+            type="email"
+            value={info.email}
+            onChange={(e) => updateClinicInfo({ email: e.target.value })}
+            placeholder="info@ssdclinic.uz"
+          />
+        </label>
       </div>
     </section>
   );

@@ -332,7 +332,9 @@ function App() {
       date,
       time,
       doctor: doctor.fullName,
+      doctorId: doctor.id,
       service: service.name,
+      serviceId: service.id,
     });
     addPatient({ fullName: apptName.trim(), phone: apptPhone.trim(), address: '' });
     setSubmitted(true);

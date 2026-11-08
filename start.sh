@@ -42,6 +42,9 @@ fi
 echo "[db] drizzle push"
 pnpm --filter @workspace/db run push --force >/dev/null
 
+# 3b) Legacy KV-blob (debts, tech-orders) → jadvalga ko'chirish (idempotent)
+node scripts/migrate-blob-stores.mjs >/dev/null 2>&1 || true
+
 # 4) Seed users — faqat jadval bo'sh bo'lsa
 USERS_COUNT=$(psql -h 127.0.0.1 -p "$PGPORT" -U postgres -d ssd_klinika -tAc \
   "SELECT count(*) FROM employees WHERE username IS NOT NULL" 2>/dev/null || echo 0)

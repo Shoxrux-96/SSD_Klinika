@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { randomUUID, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { randomUUID, randomBytes, scryptSync } from "node:crypto";
 import { eq } from "drizzle-orm";
 import {
   rolesTable,
@@ -18,13 +18,6 @@ function hashPassword(password: string): string {
   const hash = scryptSync(password, salt, 64).toString("hex");
   return `${salt}:${hash}`;
 }
-function verifyPassword(password: string, stored: string): boolean {
-  const [salt, hash] = stored.split(":");
-  if (!salt || !hash) return false;
-  const h = scryptSync(password, salt, 64);
-  const a = Buffer.from(hash, "hex");
-  return a.length === h.length && timingSafeEqual(a, h);
-}
 
 // --- Roles ---
 router.use(crudRouter({
@@ -40,10 +33,15 @@ router.get("/audit-logs", async (_req, res) => {
   res.json(rows);
 });
 router.post("/audit-logs", async (req, res) => {
+  // Actor har doim JWT'dan olinadi — client o'zini boshqa odam deb ko'rsata olmaydi.
+  const authUser = (req as any).authUser as { sub?: string } | undefined;
+  const actor = authUser?.sub ?? null;
+  if (!actor) return res.status(401).json({ error: "Actor aniqlanmadi" });
+
   const b = req.body ?? {};
   const row = {
     id: randomUUID(),
-    actor: b.actor ?? null,
+    actor,
     action: String(b.action ?? ""),
     entity: String(b.entity ?? ""),
     entityId: b.entityId ?? null,
@@ -132,32 +130,8 @@ router.delete("/users/:id", async (req, res) => {
   res.status(204).send();
 });
 
-// --- Auth: login (returns an API key for the user) ---
-router.post("/auth/login", async (req, res) => {
-  const { username, password } = req.body ?? {};
-  if (!username || !password) {
-    return res.status(400).json({ error: "username and password required" });
-  }
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.username, String(username)));
-  if (!user || !user.active || !verifyPassword(String(password), user.passwordHash)) {
-    return res.status(401).json({ error: "Invalid credentials" });
-  }
-  // Issue (or reuse) a mobile API key for this user
-  const keyRow = {
-    id: randomUUID(),
-    key: "mob_" + randomBytes(24).toString("base64url"),
-    name: `mobile:${user.username}`,
-    scope: "mobile",
-    active: true,
-    createdAt: Date.now(),
-    lastUsedAt: null,
-  };
-  await db.insert(apiKeysTable).values(keyRow);
-  res.json({
-    user: { id: user.id, username: user.username, fullName: user.fullName, roleId: user.roleId },
-    apiKey: keyRow.key,
-  });
-});
+// (Eski /auth/login yo'li olib tashlandi — `routes/auth.ts` da JWT-ga asoslangan
+//  rasmiy login turadi va rate-limit + lockout + jurnal bilan himoyalangan.)
 
 // --- API keys management ---
 router.get("/api-keys", async (_req, res) => {

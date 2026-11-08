@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useAppointments, useServices, type Appointment, type Service } from '../store';
 import { usePagination, TablePagination } from '../components/TablePagination';
+import { exportCsv, todayStamp } from '../lib/exportCsv';
 
 type Period = 'day' | 'month' | 'year';
 
@@ -91,6 +92,25 @@ export function AdminReports() {
         <div>
           <h1>Xizmatlar hisoboti</h1>
           <p>Har bir xizmatdan kunlik, oylik va yillik foydalanishlar soni va daromad miqdori — real ma'lumotlar asosida.</p>
+        </div>
+        <div className="admin-page-actions">
+          <button
+            className="admin-btn admin-btn-primary"
+            disabled={rows.length === 0}
+            onClick={() => exportCsv(`xizmatlar-hisoboti-${anchor}-${todayStamp()}`, rows, [
+              { header: 'Xizmat nomi',   get: (r) => r.name },
+              { header: 'Soni',          get: (r) => r.count },
+              { header: 'Bekor',         get: (r) => r.cancelled },
+              { header: 'Bir martalik narx', get: (r) => priceByName.get(r.name) ?? 0 },
+              { header: 'Jami daromad',  get: (r) => r.revenue },
+              {
+                header: 'Ulush (%)',
+                get: (r) => totals.revenue > 0 ? ((r.revenue / totals.revenue) * 100).toFixed(1) : '0',
+              },
+            ])}
+          >
+            Excel (CSV) yuklab olish
+          </button>
         </div>
       </div>
 

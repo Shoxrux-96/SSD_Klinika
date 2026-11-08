@@ -105,11 +105,34 @@ function usePayments(): Payment[] {
   useEffect(() => { hydratePayments(); }, []);
   return useSyncExternalStore(subPayments, () => paymentsState, () => paymentsState);
 }
-async function addPayment(p: Omit<Payment, 'id' | 'date'>) {
-  const row = await payApi<any>('/transactions', { method: 'POST', body: JSON.stringify(payToBody(p)) });
+async function addPayment(p: Omit<Payment, 'id' | 'date'> & { treatmentId?: string }) {
+  const body = payToBody(p);
+  // Agar to'lov ma'lum bir davolash uchun bo'lsa, treatmentId description ichiga qo'shiladi.
+  if (p.treatmentId) {
+    try {
+      const desc = JSON.parse(body.description);
+      body.description = JSON.stringify({ ...desc, treatmentId: p.treatmentId });
+    } catch { /* already string */ }
+  }
+  const row = await payApi<any>('/transactions', { method: 'POST', body: JSON.stringify(body) });
   const created = payFromRow(row);
   paymentsState = [created, ...paymentsState];
   emitPayments();
+
+  // Oqim avtomatizatsiyasi: to'lov qilingan davolash uchun qarzni avtomatik yopish.
+  if (p.treatmentId) {
+    try {
+      const debts = await payApi<any[]>('/debts');
+      const open = debts.find((d) => d.treatmentId === p.treatmentId && d.status === 'ochiq');
+      if (open) {
+        await payApi(`/debts/${open.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: "to'landi", paidAt: Date.now() }),
+        });
+      }
+    } catch (e) { console.warn('auto-close debt failed', e); }
+  }
+
   try {
     generatePromoForPayment({
       paymentId: created.id,
@@ -457,6 +480,8 @@ export function AdminCashier() {
             const p = patients.find((x) => x.fullName === r.patient);
             addDebt({
               treatmentId: r.id,
+              patientId: p?.id,
+              patientPassport: p?.passport,
               patient: r.patient,
               phone: p?.phone,
               doctor: r.doctor,
@@ -500,6 +525,7 @@ export function AdminCashier() {
               total: amount,
               method,
               note: note || undefined,
+              treatmentId: partial.treatmentId,
             });
             setPartial(null);
           }}

@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { eq, type SQL } from "drizzle-orm";
 import { db } from "@workspace/db";
 import type { PgTable } from "drizzle-orm/pg-core";
+import { safeErrorMessage } from "./safeError";
 
 type CrudOpts<T extends PgTable> = {
   path: string;
@@ -40,7 +41,7 @@ export function crudRouter<T extends PgTable>(opts: CrudOpts<T>): IRouter {
       const [created] = (await db.insert(table as any).values(row).returning()) as any[];
       res.status(201).json(created);
     } catch (e: any) {
-      res.status(400).json({ error: e?.message ?? "Insert failed" });
+      res.status(400).json({ error: safeErrorMessage(e, "Qo'shishda xatolik") });
     }
   });
 
@@ -60,7 +61,7 @@ export function crudRouter<T extends PgTable>(opts: CrudOpts<T>): IRouter {
       if (!row) return res.status(404).json({ error: "Not found" });
       res.json(row);
     } catch (e: any) {
-      res.status(400).json({ error: e?.message ?? "Update failed" });
+      res.status(400).json({ error: safeErrorMessage(e, "Yangilashda xatolik") });
     }
   };
   r.put(`${path}/:id`, upd);

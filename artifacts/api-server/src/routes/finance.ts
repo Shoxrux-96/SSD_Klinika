@@ -1,5 +1,7 @@
 import { Router, type IRouter } from "express";
-import { transactionsTable, payrollsTable, db } from "@workspace/db";
+import {
+  transactionsTable, payrollsTable, debtsTable, db,
+} from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { crudRouter } from "../lib/crud";
 
@@ -28,6 +30,15 @@ router.use(crudRouter({
   idColumn: payrollsTable.id,
   defaults: () => ({ createdAt: Date.now() }),
   orderBy: payrollsTable.createdAt,
+}));
+
+// Qarzdorlar — alohida jadval (ilgari KV blob)
+router.use(crudRouter({
+  path: "/debts",
+  table: debtsTable,
+  idColumn: debtsTable.id,
+  defaults: () => ({ deferredAt: Date.now(), status: "ochiq" }),
+  orderBy: debtsTable.deferredAt,
 }));
 
 router.get("/finance/summary", async (_req, res) => {

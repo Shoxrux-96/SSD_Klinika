@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { usePagination, TablePagination } from '../components/TablePagination';
+import { exportCsv, todayStamp } from '../lib/exportCsv';
 
 type AuditLog = {
   id: string;
@@ -39,7 +40,19 @@ export function AdminAudit() {
           <p>Tizimdagi barcha harakatlar jurnali — xavfsizlik va kuzatuv uchun. ({logs.length} ta yozuv)</p>
         </div>
         <div className="admin-page-actions">
-          <button className="admin-btn admin-btn-ghost">Excel yuklab olish</button>
+          <button
+            className="admin-btn admin-btn-ghost"
+            disabled={logs.length === 0}
+            onClick={() => exportCsv(`audit-log-${todayStamp()}`, logs, [
+              { header: 'Vaqt',         get: (l) => fmtTime(l.at) },
+              { header: 'Foydalanuvchi', get: (l) => l.actor ?? '' },
+              { header: 'Harakat',       get: (l) => l.action },
+              { header: 'Obyekt',        get: (l) => l.entity },
+              { header: 'Obyekt ID',     get: (l) => l.entityId ?? '' },
+            ])}
+          >
+            Excel (CSV) yuklab olish
+          </button>
         </div>
       </div>
       <section className="admin-card">

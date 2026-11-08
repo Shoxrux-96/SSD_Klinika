@@ -45,6 +45,8 @@ export const labResultsTable = pgTable(
     patientId: text("patient_id").notNull(), // patients.id (UUID)
     patientPassport: text("patient_passport"),
     doctorId: text("doctor_id"),
+    // Davolashga bog'lanish — Form003 ichida avtomatik ko'rinadi
+    treatmentId: text("treatment_id"),
     testName: text("test_name").notNull(),
     result: text("result"),
     unit: text("unit"),
@@ -53,7 +55,10 @@ export const labResultsTable = pgTable(
     date: text("date").notNull(),
     createdAt: bigint("created_at", { mode: "number" }).notNull(),
   },
-  (t) => ({ byPatient: index("lab_patient_idx").on(t.patientId) }),
+  (t) => ({
+    byPatient: index("lab_patient_idx").on(t.patientId),
+    byTreatment: index("lab_treatment_idx").on(t.treatmentId),
+  }),
 );
 
 export const dentalRecordsTable = pgTable(

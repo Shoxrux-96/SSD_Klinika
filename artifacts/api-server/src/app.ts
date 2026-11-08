@@ -6,6 +6,7 @@ import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { apiKeyAuth } from "./middlewares/auth";
+import { rbac } from "./middlewares/rbac";
 
 const app: Express = express();
 
@@ -108,15 +109,23 @@ app.get("/", (_req, res) => {
   });
 });
 
-app.use("/api", apiKeyAuth, router);
+app.use("/api", apiKeyAuth, rbac, router);
 
-// Generic error handler so external systems always get JSON
+// Generic error handler so external systems always get JSON.
+// Production rejimida DB/stack-trace matnlari client'ga chiqib ketmaydi.
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   logger.error({ err }, "Unhandled error");
-  res.status(err?.status ?? 500).json({
-    error: err?.message ?? "Internal server error",
-    code: err?.code,
-  });
+  const isProd = process.env.NODE_ENV === "production";
+  const status = err?.status ?? 500;
+  // 4xx — foydalanuvchi xatosi, xabar ko'rsatish mumkin.
+  // 5xx — ichki muammo, xabar yashiriladi.
+  const safeMessage =
+    status < 500
+      ? err?.message ?? "Bad request"
+      : isProd
+        ? "Serverda ichki xatolik yuz berdi"
+        : err?.message ?? "Internal server error";
+  res.status(status).json({ error: safeMessage });
 });
 
 export default app;

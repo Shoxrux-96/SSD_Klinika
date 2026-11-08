@@ -133,8 +133,53 @@ export async function updateTreatment(id: string, patch: Partial<Treatment>) {
   const updated = await api<any>(`/treatments/${id}`, {
     method: 'PATCH', body: JSON.stringify(trToApi(patch)),
   });
-  trState = trState.map((t) => (t.id === id ? trFromApi(updated) : t));
+  const before = trState.find((t) => t.id === id);
+  const after = trFromApi(updated);
+  trState = trState.map((t) => (t.id === id ? after : t));
   emitTr();
+
+  // Oqim avtomatizatsiyasi: davolash "yakunlandi" bo'lsa va to'lov hali qilinmagan bo'lsa,
+  // qarz daftariga avtomatik qo'shamiz. Kassir uni ko'rib to'lovni amalga oshiradi.
+  const becameDone =
+    patch.status === 'yakunlandi' && before && before.status !== 'yakunlandi';
+  if (becameDone && (after.amount ?? 0) > 0) {
+    try { await autoDeferIfUnpaid(after); } catch (e) { console.warn('auto-defer failed', e); }
+  }
+}
+
+async function autoDeferIfUnpaid(t: Treatment) {
+  // Transaction mavjudmi (shu treatment uchun to'lov qilinganmi)?
+  let txns: any[] = [];
+  try { txns = await api<any[]>('/transactions'); } catch { return; }
+  const paid = txns.some((x) => {
+    if (x.type !== 'income') return false;
+    try {
+      const desc = typeof x.description === 'string' ? JSON.parse(x.description) : x.description;
+      return desc?.treatmentId === t.id;
+    } catch { return false; }
+  });
+  if (paid) return;
+
+  // Qarz jadvalida allaqachon bor-yo'qligini tekshirib qo'shamiz.
+  let debts: any[] = [];
+  try { debts = await api<any[]>('/debts'); } catch { return; }
+  if (debts.some((d) => d.treatmentId === t.id && d.status === 'ochiq')) return;
+
+  const body = {
+    id: `D-${Date.now().toString(36).toUpperCase()}`,
+    treatmentId: t.id,
+    patientId: t.patientId ?? null,
+    patientPassport: t.patientPassport ?? null,
+    patient: t.patient,
+    doctor: t.doctor,
+    services: t.service ?? (t.services?.[0] ?? ''),
+    amount: t.amount ?? 0,
+    date: t.date,
+    note: "Davolash yakunlangan — to'lov kutilmoqda",
+    status: 'ochiq',
+    deferredAt: Date.now(),
+  };
+  await api('/debts', { method: 'POST', body: JSON.stringify(body) });
 }
 export async function removeTreatment(id: string) {
   await api(`/treatments/${id}`, { method: 'DELETE' });
@@ -232,6 +277,8 @@ export type LabTestRecord = {
   patientId?: string;       // UUID
   patientPassport?: string; // qo'shimcha identifikator
   patientName: string;      // ko'rsatish uchun
+  // Davolashga bog'lanish (ixtiyoriy) — Form003 ichida ko'rsatiladi
+  treatmentId?: string;
   testType: string;
   templateId?: string;
   status: string;
@@ -250,6 +297,7 @@ function labFromApi(row: any): LabTestRecord {
     patientId: row.patientId ?? undefined,
     patientPassport: row.patientPassport ?? extra.patientPassport,
     patientName: extra.patientName ?? row.patientId ?? '',
+    treatmentId: row.treatmentId ?? extra.treatmentId ?? undefined,
     testType: row.testName,
     status: row.status,
     createdAt: Number(row.createdAt) || Date.now(),
@@ -289,12 +337,14 @@ export async function addLabTest(t: Omit<LabTestRecord, 'id' | 'createdAt'> & { 
     patientId: t.patientId ?? t.patientName, // UUID bo'lsa UUID, aks holda ism (legacy)
     patientPassport: t.patientPassport,
     doctorId: t.labDoctor ?? null,
+    treatmentId: t.treatmentId ?? null,
     testName: t.testType,
     status: t.status ?? 'yangi',
     date: t.docDate ?? new Date().toISOString().slice(0, 10),
     result: JSON.stringify({
       patientName: t.patientName,
       patientPassport: t.patientPassport,
+      treatmentId: t.treatmentId,
       readyAt: t.readyAt, results: t.results,
       laborant: t.laborant, templateId: t.templateId,
     }),
@@ -312,12 +362,14 @@ export async function updateLabTest(id: string, patch: Partial<LabTestRecord>) {
   else if (patch.patientName !== undefined && !merged.patientId) body.patientId = patch.patientName;
   if (patch.patientPassport !== undefined) body.patientPassport = patch.patientPassport;
   if (patch.labDoctor !== undefined) body.doctorId = patch.labDoctor;
+  if (patch.treatmentId !== undefined) body.treatmentId = patch.treatmentId;
   if (patch.testType !== undefined) body.testName = patch.testType;
   if (patch.status !== undefined) body.status = patch.status;
   if (patch.docDate !== undefined) body.date = patch.docDate;
   body.result = JSON.stringify({
     patientName: merged.patientName,
     patientPassport: merged.patientPassport,
+    treatmentId: merged.treatmentId,
     readyAt: merged.readyAt, results: merged.results,
     laborant: merged.laborant, templateId: merged.templateId,
   });

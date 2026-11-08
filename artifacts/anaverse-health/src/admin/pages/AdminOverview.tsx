@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Activity, CalendarCheck, DollarSign, Stethoscope, Users, TrendingUp, TrendingDown,
-  Receipt, ClipboardList, FlaskConical, PiggyBank,
+  Receipt, ClipboardList, FlaskConical, PiggyBank, AlertCircle,
 } from 'lucide-react';
 import {
   BarChart, LineChart, PeriodTabs, StatTile, usePeriod, bucketize, dashboardCss, fmtSom, fmtNumber,
@@ -12,8 +12,23 @@ import {
   useAppointments, usePatients, useQueue, useEmployees, useServices,
 } from '../store';
 import { useTreatments } from '../clinicalData';
+import { useDebts } from '../debtsStore';
 
 type Txn = { id: string; type: 'income' | 'expense' | string; amount: number; createdAt: number };
+
+// Tanlangan davr uchun vaqt oralig'i (ms). day → oxirgi 7 kun; month → oxirgi 12 oy; year → oxirgi 5 yil.
+function periodWindow(period: 'day' | 'month' | 'year'): { from: number } {
+  const now = Date.now();
+  const DAY = 24 * 60 * 60 * 1000;
+  if (period === 'day')   return { from: now - 7 * DAY };
+  if (period === 'month') return { from: now - 365 * DAY };
+  return { from: now - 5 * 365 * DAY };
+}
+function parseDate(d?: string | number): number {
+  if (typeof d === 'number') return d;
+  if (!d) return 0;
+  return new Date(d).getTime();
+}
 
 export function AdminOverview() {
   const appts = useAppointments();
@@ -22,6 +37,7 @@ export function AdminOverview() {
   const employees = useEmployees();
   const services = useServices();
   const treatments = useTreatments();
+  const debts = useDebts();
   const [txns, setTxns] = useState<Txn[]>([]);
   const { period, setPeriod } = usePeriod('month');
 
@@ -32,16 +48,34 @@ export function AdminOverview() {
       .catch(() => setTxns([]));
   }, []);
 
-  const incomes = useMemo(() => txns.filter((t) => t.type === 'income'), [txns]);
-  const expenses = useMemo(() => txns.filter((t) => t.type === 'expense'), [txns]);
+  const { from: periodFrom } = useMemo(() => periodWindow(period), [period]);
 
+  // Davrga mos tranzaksiyalar/davolashlar (tile'lar davr bo'yicha filtr qilinsin)
+  const incomes = useMemo(
+    () => txns.filter((t) => t.type === 'income' && t.createdAt >= periodFrom),
+    [txns, periodFrom],
+  );
+  const expenses = useMemo(
+    () => txns.filter((t) => t.type === 'expense' && t.createdAt >= periodFrom),
+    [txns, periodFrom],
+  );
+  const periodTreatments = useMemo(
+    () => treatments.filter((t) => parseDate(t.date) >= periodFrom),
+    [treatments, periodFrom],
+  );
+
+  const periodLabel = period === 'day' ? 'oxirgi 7 kun' : period === 'month' ? 'oxirgi 12 oy' : 'oxirgi 5 yil';
   const today = new Date().toISOString().slice(0, 10);
   const todayAppts = appts.filter((a) => a.date === today).length;
   const activeDoctors = employees.filter((e) => e.category === 'medical' && !e.archived).length;
   const totalIncome = incomes.reduce((s, t) => s + t.amount, 0);
   const totalExpense = expenses.reduce((s, t) => s + t.amount, 0);
   const profit = totalIncome - totalExpense;
-  const doneTreatments = treatments.filter((t) => t.status === 'yakunlandi').length;
+  const doneTreatments = periodTreatments.filter((t) => t.status === 'yakunlandi').length;
+
+  // Qarzdorlar paneli — ochiq qarzlar, umumiy summa
+  const openDebts = useMemo(() => debts.filter((d) => d.status === 'ochiq'), [debts]);
+  const debtTotal = openDebts.reduce((s, d) => s + (d.amount ?? 0), 0);
 
   const apptSeries = useMemo(() => bucketize(appts, (a) => a.date, () => 1, period), [appts, period]);
   const patientSeries = useMemo(() => bucketize(patients, (p) => p.addedAt, () => 1, period), [patients, period]);
@@ -138,13 +172,19 @@ export function AdminOverview() {
         <StatTile tone="primary" icon={<CalendarCheck size={16} />} label="Bugungi qabullar" value={todayAppts} hint={today} />
         <StatTile tone="violet" icon={<Users size={16} />} label="Jami bemorlar" value={fmtNumber(patients.length)} hint="bazada" />
         <StatTile tone="cyan" icon={<Stethoscope size={16} />} label="Faol shifokorlar" value={activeDoctors} hint="tibbiy hodim" />
-        <StatTile tone="ok" icon={<DollarSign size={16} />} label="Jami daromad" value={fmtSom(totalIncome)} hint="barcha davr" />
-        <StatTile tone="rose" icon={<TrendingDown size={16} />} label="Xarajat" value={fmtSom(totalExpense)} hint="barcha davr" />
+        <StatTile tone="ok" icon={<DollarSign size={16} />} label="Daromad" value={fmtSom(totalIncome)} hint={periodLabel} />
+        <StatTile tone="rose" icon={<TrendingDown size={16} />} label="Xarajat" value={fmtSom(totalExpense)} hint={periodLabel} />
         <StatTile tone="warn" icon={<PiggyBank size={16} />} label="Sof foyda" value={fmtSom(profit)} hint={profit >= 0 ? 'ijobiy' : 'salbiy'} />
-        <StatTile tone="primary" icon={<ClipboardList size={16} />} label="Yakunlangan davolash" value={fmtNumber(doneTreatments)} hint={`jami ${treatments.length}`} />
+        <StatTile tone="primary" icon={<ClipboardList size={16} />} label="Yakunlangan davolash" value={fmtNumber(doneTreatments)} hint={periodLabel} />
         <StatTile tone="rose" icon={<Activity size={16} />} label="Faol navbat" value={queue.length} hint="hozir" />
         <StatTile tone="violet" icon={<FlaskConical size={16} />} label="Xizmatlar" value={services.filter((s) => !s.archived).length} hint="faol" />
-        <StatTile tone="cyan" icon={<Receipt size={16} />} label="Tranzaksiya" value={fmtNumber(txns.length)} hint="jami" />
+        <StatTile
+          tone={openDebts.length > 0 ? 'warn' : 'cyan'}
+          icon={<AlertCircle size={16} />}
+          label="Ochiq qarzlar"
+          value={`${openDebts.length} ta`}
+          hint={debtTotal > 0 ? fmtSom(debtTotal) : "qarz yo'q"}
+        />
       </div>
 
       <div className="dc-period-head">

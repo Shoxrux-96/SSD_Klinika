@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
-import { techProductsTable, attendanceTable, db } from "@workspace/db";
+import { techProductsTable, techOrdersTable, attendanceTable, db } from "@workspace/db";
 import { crudRouter } from "../lib/crud";
 
 const router: IRouter = Router();
@@ -13,6 +13,15 @@ router.use(crudRouter({
   idColumn: techProductsTable.id,
   defaults: () => ({ addedAt: Date.now() }),
   orderBy: techProductsTable.addedAt,
+}));
+
+// --- Tech orders — tibbiy texnik buyurtmalar (ilgari KV blob)
+router.use(crudRouter({
+  path: "/tech-orders",
+  table: techOrdersTable,
+  idColumn: techOrdersTable.id,
+  defaults: () => ({ createdAt: Date.now() }),
+  orderBy: techOrdersTable.createdAt,
 }));
 
 // --- Attendance — davomat (hodim × sana)

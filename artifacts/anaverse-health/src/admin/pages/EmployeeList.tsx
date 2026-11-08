@@ -27,7 +27,18 @@ import {
   useEmployees,
   type Employee,
   type EmployeeCategory,
+  type EmployeeRole,
 } from '../store';
+
+const ROLE_OPTIONS: { value: EmployeeRole; label: string }[] = [
+  { value: 'oddiy',       label: "Oddiy (kira olmaydi)" },
+  { value: 'admin',       label: 'Administrator' },
+  { value: 'shifokor',    label: 'Shifokor' },
+  { value: 'laborant',    label: 'Laborant' },
+  { value: 'registrator', label: 'Registrator' },
+  { value: 'kassir',      label: 'Kassir' },
+  { value: 'buxgalter',   label: 'Buxgalter' },
+];
 
 type Props = {
   category: EmployeeCategory;
@@ -303,6 +314,17 @@ function EmployeeViewModal({ emp, onClose, onEdit }: { emp: Employee; onClose: (
           <div className="patient-view-field"><span>Diplom</span><strong>{emp.diploma}</strong></div>
           <div className="patient-view-field"><span>Qo‘shilgan</span><strong>{fmtDate(emp.addedAt)}</strong></div>
           <div className="patient-view-field"><span>Holat</span><strong>{emp.archived ? 'Arxivda' : 'Faol'}</strong></div>
+          <div className="patient-view-field">
+            <span>Tizimga kirish</span>
+            <strong>
+              {emp.username ? (
+                <>
+                  <code>{emp.username}</code> · rol: <code>{emp.role ?? 'oddiy'}</code>
+                  {emp.hasPassword ? ' · parol o\'rnatilgan' : ' · parol o\'rnatilmagan'}
+                </>
+              ) : "Login yaratilmagan"}
+            </strong>
+          </div>
         </div>
         <div className="appt-modal-foot">
           <button type="button" className="admin-btn admin-btn-ghost" onClick={onClose}>Yopish</button>
@@ -330,7 +352,9 @@ function EmployeeModal({
   positions: string[];
   initial?: Employee;
   onClose: () => void;
-  onSave: (data: Omit<Employee, 'id' | 'addedAt' | 'archived' | 'category'>) => void;
+  onSave: (
+    data: Omit<Employee, 'id' | 'addedAt' | 'archived' | 'category' | 'hasPassword'> & { password?: string },
+  ) => void;
 }) {
   const [photo, setPhoto] = useState<string>(initial?.photo ?? '');
   const [fullName, setFullName] = useState(initial?.fullName ?? '');
@@ -340,6 +364,12 @@ function EmployeeModal({
   const [specialty, setSpecialty] = useState(initial?.specialty ?? '');
   const [experience, setExperience] = useState(initial?.experience ?? '');
   const [diploma, setDiploma] = useState(initial?.diploma ?? '');
+  // Tizimga kirish
+  const [username, setUsername] = useState(initial?.username ?? '');
+  const [role, setRole] = useState<EmployeeRole>((initial?.role as EmployeeRole) ?? 'oddiy');
+  const [password, setPassword] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
+  const [pwdErr, setPwdErr] = useState<string | null>(null);
 
   const onPhotoFile = (file: File | null) => {
     if (!file) return;
@@ -351,6 +381,19 @@ function EmployeeModal({
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!fullName.trim()) return;
+    setPwdErr(null);
+    // Agar login ma'lumotlari to'ldirilgan bo'lsa — validatsiya
+    const wantsLogin = Boolean(username.trim()) || role !== 'oddiy';
+    if (wantsLogin && !username.trim()) {
+      setPwdErr("Rol tanlanganida login (foydalanuvchi nomi) ham kerak"); return;
+    }
+    // Yangi hodim bo'lsa va rol belgilansa — parol majburiy
+    if (mode === 'add' && wantsLogin && password.length === 0) {
+      setPwdErr("Yangi hodim uchun parol o'rnatish kerak (kamida 8 belgi)"); return;
+    }
+    if (password.length > 0 && password.length < 8) {
+      setPwdErr("Parol kamida 8 ta belgi bo'lishi kerak"); return;
+    }
     onSave({
       photo: photo || undefined,
       fullName: fullName.trim(),
@@ -360,6 +403,9 @@ function EmployeeModal({
       specialty: specialty.trim(),
       experience: experience.trim(),
       diploma: diploma.trim(),
+      username: username.trim() || null,
+      role,
+      ...(password ? { password } : {}),
     });
   };
 
@@ -429,6 +475,60 @@ function EmployeeModal({
               <span>Diplom</span>
               <input value={diploma} onChange={(e) => setDiploma(e.target.value)} placeholder="TTA, 2018 — stomatologiya" />
             </label>
+          </div>
+
+          <div className="emp-auth-section">
+            <div className="emp-auth-head">
+              <strong>Tizimga kirish ma'lumotlari</strong>
+              <small>Hodim o'z paneliga kirishi uchun. Bo'sh qoldirsangiz — hodim tizimga kira olmaydi.</small>
+            </div>
+            <div className="appt-modal-row">
+              <label>
+                <span>Login (foydalanuvchi nomi)</span>
+                <input
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="masalan: aqodirov"
+                  autoComplete="off"
+                />
+              </label>
+              <label>
+                <span>Rol</span>
+                <select value={role} onChange={(e) => setRole(e.target.value as EmployeeRole)}>
+                  {ROLE_OPTIONS.map((r) => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <label>
+              <span>
+                {mode === 'edit' && initial?.hasPassword ? "Parolni yangilash (ixtiyoriy)" : "Parol"}
+                <small style={{ color: '#64748b', fontWeight: 400 }}> — kamida 8 ta belgi</small>
+              </span>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPwd ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={mode === 'edit' && initial?.hasPassword ? "Bo'sh qoldirsangiz o'zgarmaydi" : "Yangi parol"}
+                  autoComplete="new-password"
+                  style={{ paddingRight: 72 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPwd((v) => !v)}
+                  style={{
+                    position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
+                    padding: '4px 8px', fontSize: 12, background: 'transparent',
+                    border: 0, color: '#4f46e5', cursor: 'pointer',
+                  }}
+                >
+                  {showPwd ? "Yashirish" : "Ko'rsatish"}
+                </button>
+              </div>
+            </label>
+            {pwdErr && <div className="emp-auth-err">{pwdErr}</div>}
           </div>
         </div>
         <div className="appt-modal-foot">
