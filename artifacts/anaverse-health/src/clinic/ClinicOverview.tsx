@@ -2,12 +2,25 @@ import { useMemo } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useTreatments } from '../admin/clinicalData';
 import { useQueue } from '../admin/store';
-import { ClipboardList, Pill, FlaskConical, Users, TrendingUp, Wallet, Activity } from 'lucide-react';
+import {
+  ClipboardList, Pill, FlaskConical, Users, TrendingUp, Wallet, Activity, FileText,
+} from 'lucide-react';
 import {
   BarChart, LineChart, PeriodTabs, StatTile, usePeriod, bucketize, dashboardCss, fmtSom, fmtNumber,
 } from '../admin/components/DashboardCharts';
 
 const isLabService = (name?: string) => !!name && /lab|tahlil|analiz|anali[zs]/i.test(name);
+
+// Tanlangan davr uchun vaqt oralig'i.
+function periodWindow(period: 'day' | 'month' | 'year'): { from: string; label: string } {
+  const now = new Date();
+  const DAY = 24 * 60 * 60 * 1000;
+  if (period === 'day')
+    return { from: new Date(now.getTime() - 7 * DAY).toISOString().slice(0, 10), label: 'oxirgi 7 kun' };
+  if (period === 'month')
+    return { from: new Date(now.getTime() - 365 * DAY).toISOString().slice(0, 10), label: 'oxirgi 12 oy' };
+  return { from: new Date(now.getTime() - 5 * 365 * DAY).toISOString().slice(0, 10), label: 'oxirgi 5 yil' };
+}
 
 export function ClinicOverview() {
   const { user } = useAuth();
@@ -19,24 +32,32 @@ export function ClinicOverview() {
   const mine = useMemo(() => {
     if (!user) return treatments;
     if (isLaborant) return treatments.filter((t) => isLabService(t.service));
-    return treatments.filter((t) => t.doctor === user.fullName);
+    // shifokor — o'ziniki (hozircha doctor nomi orqali — kelajakda doctorId bo'yicha)
+    return treatments.filter((t) => t.doctor === user.fullName || t.doctor === user.id);
   }, [treatments, user, isLaborant]);
+
+  const { from: periodFrom, label: periodLabel } = useMemo(() => periodWindow(period), [period]);
+  const periodMine = useMemo(() => mine.filter((t) => (t.date ?? '') >= periodFrom), [mine, periodFrom]);
 
   const myQueue = useMemo(() => (user ? queue.filter((q) => q.doctor === user.fullName) : []), [queue, user]);
 
   const today = new Date().toISOString().slice(0, 10);
   const todayCount = mine.filter((t) => t.date === today).length;
   const activeCount = mine.filter((t) => t.status === 'davolanmoqda').length;
-  const doneCount = mine.filter((t) => t.status === 'yakunlandi').length;
-  const totalAmount = mine.reduce((s, t) => s + (t.amount ?? 0), 0);
+  // Yangi: rejalashtirilgan (qabulga keldi -> avto-yaratilgan) davolashlar
+  const draftCount = mine.filter((t) => t.status === 'rejalashtirildi').length;
+  const doneCount = periodMine.filter((t) => t.status === 'yakunlandi').length;
+  const totalAmount = periodMine.reduce((s, t) => s + (t.amount ?? 0), 0);
+  // Avtomatik yaratilgan qoralama davolashlar — shifokor diqqat qaratishi uchun
+  const draftList = useMemo(() => mine.filter((t) => t.status === 'rejalashtirildi').slice(0, 8), [mine]);
 
   const countSeries = useMemo(
-    () => bucketize(mine, (t) => t.date, () => 1, period),
-    [mine, period],
+    () => bucketize(periodMine, (t) => t.date, () => 1, period),
+    [periodMine, period],
   );
   const amountSeries = useMemo(
-    () => bucketize(mine, (t) => t.date, (t) => t.amount ?? 0, period),
-    [mine, period],
+    () => bucketize(periodMine, (t) => t.date, (t) => t.amount ?? 0, period),
+    [periodMine, period],
   );
 
   return (
@@ -52,10 +73,17 @@ export function ClinicOverview() {
       <div className="dc-tiles">
         <StatTile tone="primary" icon={<ClipboardList size={16} />} label="Bugungi davolash" value={todayCount} hint="bugungi kun" />
         <StatTile tone="warn" icon={<Users size={16} />} label="Faol bemorlar" value={activeCount} hint="davolanmoqda" />
-        <StatTile tone="ok" icon={<Pill size={16} />} label="Yakunlangan" value={doneCount} hint="jami" />
+        <StatTile
+          tone={draftCount > 0 ? 'rose' : 'cyan'}
+          icon={<FileText size={16} />}
+          label="Yangi qoralamalar"
+          value={draftCount}
+          hint="qabuldan avto"
+        />
+        <StatTile tone="ok" icon={<Pill size={16} />} label="Yakunlangan" value={doneCount} hint={periodLabel} />
         <StatTile tone="violet" icon={<Activity size={16} />} label="Navbatimda" value={myQueue.length} hint="hozir" />
         <StatTile tone="cyan" icon={<FlaskConical size={16} />} label="Jami ishlar" value={fmtNumber(mine.length)} hint="barchasi" />
-        <StatTile tone="rose" icon={<Wallet size={16} />} label="Jami summa" value={fmtSom(totalAmount)} hint="davolash" />
+        <StatTile tone="rose" icon={<Wallet size={16} />} label="Jami summa" value={fmtSom(totalAmount)} hint={periodLabel} />
       </div>
 
       <div className="dc-period-head">
@@ -82,6 +110,42 @@ export function ClinicOverview() {
           <LineChart data={amountSeries} color="#10b981" format={fmtSom} />
         </div>
       </div>
+
+      {draftList.length > 0 && (
+        <div className="admin-card" style={{ marginTop: 20, padding: 20 }}>
+          <h3 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <FileText size={16} />
+            Yangi qoralama davolashlar
+            <small style={{ fontWeight: 400, color: '#64748b', fontSize: 12 }}>
+              — qabuldan avtomatik yaratilgan, davolashni to'ldirishga tayyor
+            </small>
+          </h3>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ textAlign: 'left', color: '#64748b' }}>
+                  <th style={{ padding: '8px 10px' }}>Sana</th>
+                  <th style={{ padding: '8px 10px' }}>Bemor</th>
+                  <th style={{ padding: '8px 10px' }}>Xizmat</th>
+                  <th style={{ padding: '8px 10px' }}>Summa</th>
+                </tr>
+              </thead>
+              <tbody>
+                {draftList.map((t) => (
+                  <tr key={t.id} style={{ borderTop: '1px solid #eef2f7' }}>
+                    <td style={{ padding: '8px 10px' }}>{t.date}</td>
+                    <td style={{ padding: '8px 10px', fontWeight: 600 }}>{t.patient}</td>
+                    <td style={{ padding: '8px 10px' }}>{t.service ?? '—'}</td>
+                    <td style={{ padding: '8px 10px', fontVariantNumeric: 'tabular-nums' }}>
+                      {t.amount ? fmtSom(t.amount) : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div className="admin-card" style={{ marginTop: 20, padding: 20 }}>
         <h3 style={{ marginTop: 0 }}>So‘nggi davolashlar</h3>
