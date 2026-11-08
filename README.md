@@ -18,7 +18,11 @@ Skript avtomatik: Postgres'ni `.pgdata/` ichida ishga tushiradi, drizzle schema 
 
 - **Web:** http://localhost:3000
 - **API:** http://localhost:5000/api (docs: `/api/docs`)
-- **Login:** `admin / shifokor / laborant / reg / kassir / bux / hodim` (parol: `parol1234`)
+- **Test loginlar** — email-style, har bir rol uchun alohida murakkab parol.
+  Loginlar: `admin@`, `shifokor@`, `laborant@`, `registrator@`, `kassir@`,
+  `buxgalter@`, `hodim@` (barchasi `@ssdklinika.uz` domeni bilan).
+  Parollar `scripts/seed-users.sh` ichida ko'rsatilgan; terminalga
+  birinchi `./start.sh` ishga tushirganda ekranga chiqadi.
 
 To'xtatish: `./stop.sh`
 
