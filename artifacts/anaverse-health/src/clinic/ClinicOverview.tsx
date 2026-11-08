@@ -1,9 +1,9 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useTreatments } from '../admin/clinicalData';
-import { useQueue } from '../admin/store';
+import { useQueue, useServices, useEmployees } from '../admin/store';
 import {
-  ClipboardList, Pill, FlaskConical, Users, TrendingUp, Wallet, Activity, FileText,
+  ClipboardList, Pill, FlaskConical, Users, TrendingUp, Wallet, Activity, FileText, Banknote,
 } from 'lucide-react';
 import {
   BarChart, LineChart, PeriodTabs, StatTile, usePeriod, bucketize, dashboardCss, fmtSom, fmtNumber,
@@ -25,9 +25,29 @@ function periodWindow(period: 'day' | 'month' | 'year'): { from: string; label: 
 export function ClinicOverview() {
   const { user } = useAuth();
   const treatments = useTreatments();
+  const services = useServices();
+  const employees = useEmployees();
   const queue = useQueue();
   const isLaborant = user?.role === 'laborant';
   const { period, setPeriod } = usePeriod('month');
+  const [baseSalary, setBaseSalary] = useState<number>(0);
+
+  const me = useMemo(
+    () => employees.find((e) => e.id === user?.id || e.fullName === user?.fullName),
+    [employees, user],
+  );
+
+  // Asos oylikni DB'dan olish (payrolls jadvalidan)
+  useEffect(() => {
+    if (!me) return;
+    fetch('/api/payrolls')
+      .then((r) => r.ok ? r.json() : [])
+      .then((rows: any[]) => {
+        const row = rows.find((r) => r.employeeId === me.id);
+        setBaseSalary(Number(row?.baseSalary ?? 0));
+      })
+      .catch(() => {});
+  }, [me]);
 
   const mine = useMemo(() => {
     if (!user) return treatments;
@@ -50,6 +70,26 @@ export function ClinicOverview() {
   const totalAmount = periodMine.reduce((s, t) => s + (t.amount ?? 0), 0);
   // Avtomatik yaratilgan qoralama davolashlar — shifokor diqqat qaratishi uchun
   const draftList = useMemo(() => mine.filter((t) => t.status === 'rejalashtirildi').slice(0, 8), [mine]);
+
+  // Bu oyki ulush (services.doctorShare foizi bo'yicha aniq hisoblash)
+  const shareByService = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const s of services) m.set(s.name, Number(s.doctorShare ?? 0));
+    return m;
+  }, [services]);
+  const monthStart = today.slice(0, 7) + '-01';
+  const monthShare = useMemo(() => {
+    let total = 0;
+    for (const t of mine) {
+      if (t.status !== 'yakunlandi') continue;
+      if ((t.date ?? '') < monthStart) continue;
+      const svcName = t.service ?? t.services?.[0] ?? '';
+      const pct = shareByService.get(svcName) ?? 0;
+      total += Math.round(((Number(t.amount) || 0) * pct) / 100);
+    }
+    return total;
+  }, [mine, monthStart, shareByService]);
+  const monthTotalPay = baseSalary + monthShare;
 
   const countSeries = useMemo(
     () => bucketize(periodMine, (t) => t.date, () => 1, period),
@@ -84,6 +124,12 @@ export function ClinicOverview() {
         <StatTile tone="violet" icon={<Activity size={16} />} label="Navbatimda" value={myQueue.length} hint="hozir" />
         <StatTile tone="cyan" icon={<FlaskConical size={16} />} label="Jami ishlar" value={fmtNumber(mine.length)} hint="barchasi" />
         <StatTile tone="rose" icon={<Wallet size={16} />} label="Jami summa" value={fmtSom(totalAmount)} hint={periodLabel} />
+        {!isLaborant && (
+          <>
+            <StatTile tone="violet" icon={<TrendingUp size={16} />} label="Bu oyki ulush" value={fmtSom(monthShare)} hint="doctorShare %" />
+            <StatTile tone="ok" icon={<Banknote size={16} />} label="Jami oylik + ulush" value={fmtSom(monthTotalPay)} hint={`asos: ${fmtSom(baseSalary)}`} />
+          </>
+        )}
       </div>
 
       <div className="dc-period-head">

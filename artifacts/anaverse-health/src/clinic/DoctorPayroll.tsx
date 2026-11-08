@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Banknote, Calculator, Wallet, TrendingUp, Calendar } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
-import { useEmployees } from '../admin/store';
+import { useEmployees, useServices } from '../admin/store';
 import { useTreatments } from '../admin/clinicalData';
 import { salaryInRange, INCOME_TAX } from '../admin/attendanceStore';
 
@@ -22,13 +22,21 @@ export function DoctorPayroll() {
   const { user } = useAuth();
   const employees = useEmployees();
   const treatments = useTreatments();
+  const services = useServices();
   const [ym, setYm] = useState(toYM(new Date()));
   const [baseSalary, setBaseSalary] = useState<number>(0);
 
   const me = useMemo(
-    () => employees.find((e) => e.fullName === user?.fullName),
+    () => employees.find((e) => e.id === user?.id || e.fullName === user?.fullName),
     [employees, user],
   );
+
+  // Xizmat nomi orqali doctorShare foizini topish
+  const shareByService = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const s of services) m.set(s.name, Number(s.doctorShare ?? 0));
+    return m;
+  }, [services]);
 
   // Payroll config'ni DB'dan olib kelamiz (admin belgilagan)
   useEffect(() => {
@@ -48,19 +56,32 @@ export function DoctorPayroll() {
     [me, baseSalary, from, to],
   );
 
-  // Shifokorning davolashlari va ulushi (umumiy summa * 20% — oddiy taxmin; haqiqiy foiz admin'dan)
+  // Shifokorning davolashlari — UUID yoki ism bo'yicha topamiz
   const treatmentsMine = useMemo(() => {
     if (!me) return [];
-    return treatments.filter((t) => t.doctor === me.fullName);
+    return treatments.filter((t) => t.doctor === me.fullName || t.doctor === me.id);
   }, [treatments, me]);
 
   const monthTreatments = useMemo(
-    () => treatmentsMine.filter((t) => t.date >= from && t.date <= to),
+    () => treatmentsMine.filter((t) => t.date >= from && t.date <= to && t.status === 'yakunlandi'),
     [treatmentsMine, from, to],
   );
 
   const revenue = monthTreatments.reduce((s, t) => s + (Number(t.amount) || 0), 0);
-  const share = Math.round(revenue * 0.2); // ulushi — standart 20%
+
+  // Har bir xizmatning doctorShare foizi bo'yicha aniq hisoblash (services jadvalidagi qiymat).
+  // Agar xizmat uchun doctorShare belgilanmagan bo'lsa — 0%.
+  const share = useMemo(() => {
+    let total = 0;
+    for (const t of monthTreatments) {
+      const svcName = t.service ?? t.services?.[0] ?? '';
+      const pct = shareByService.get(svcName) ?? 0;
+      total += Math.round(((Number(t.amount) || 0) * pct) / 100);
+    }
+    return total;
+  }, [monthTreatments, shareByService]);
+
+  const effectivePct = revenue > 0 ? ((share / revenue) * 100).toFixed(1) : '0';
   const total = (salary?.net ?? 0) + share;
 
   return (
@@ -88,7 +109,7 @@ export function DoctorPayroll() {
         </div>
         <div className="dp-stat dp-violet">
           <div className="dp-ico"><TrendingUp size={20} /></div>
-          <small>Davolash ulushi (20%)</small>
+          <small>Davolash ulushi ({effectivePct}%)</small>
           <strong>{fmtSom(share)}</strong>
           <span>daromad: {fmtSom(revenue)}</span>
         </div>
@@ -134,7 +155,7 @@ export function DoctorPayroll() {
 
       <div className="dp-note">
         <Calendar size={14} />
-        <small>Daromad solig‘i {Math.round(INCOME_TAX * 100)}% ushlab qolindi. Ulush foizini admin belgilaydi — bu yerda standart 20% ishlatiladi.</small>
+        <small>Daromad solig‘i {Math.round(INCOME_TAX * 100)}% ushlab qolindi. Ulush foizi har bir xizmat uchun admin paneli (Xizmatlar → Doktor ulushi %) orqali belgilangan qiymatdan olinadi.</small>
       </div>
     </div>
   );
