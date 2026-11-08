@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Banknote, Calculator, Wallet, TrendingUp, Calendar } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useEmployees, useServices } from '../admin/store';
-import { useTreatments } from '../admin/clinicalData';
+import { useTreatments, useLabTests } from '../admin/clinicalData';
 import { salaryInRange, INCOME_TAX } from '../admin/attendanceStore';
 
 function fmtSom(n: number) {
@@ -22,7 +22,9 @@ export function DoctorPayroll() {
   const { user } = useAuth();
   const employees = useEmployees();
   const treatments = useTreatments();
+  const labTests = useLabTests();
   const services = useServices();
+  const isLaborant = user?.role === 'laborant';
   const [ym, setYm] = useState(toYM(new Date()));
   const [baseSalary, setBaseSalary] = useState<number>(0);
 
@@ -56,33 +58,75 @@ export function DoctorPayroll() {
     [me, baseSalary, from, to],
   );
 
-  // Shifokorning davolashlari — UUID yoki ism bo'yicha topamiz
+  // Shifokor: treatments; Laborant: lab_results (ikki xil manba)
   const treatmentsMine = useMemo(() => {
     if (!me) return [];
+    if (isLaborant) return []; // laborant uchun treatments ishlatilmaydi
     return treatments.filter((t) => t.doctor === me.fullName || t.doctor === me.id);
-  }, [treatments, me]);
+  }, [treatments, me, isLaborant]);
+
+  const labMine = useMemo(() => {
+    if (!me || !isLaborant) return [];
+    return labTests.filter((l) =>
+      l.laborant === me.fullName || l.laborant === me.id ||
+      l.labDoctor === me.fullName || l.labDoctor === me.id,
+    );
+  }, [labTests, me, isLaborant]);
 
   const monthTreatments = useMemo(
     () => treatmentsMine.filter((t) => t.date >= from && t.date <= to && t.status === 'yakunlandi'),
     [treatmentsMine, from, to],
   );
 
-  const revenue = monthTreatments.reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  const monthLabs = useMemo(
+    () => labMine.filter((l) => {
+      const d = l.docDate ?? '';
+      return d >= from && d <= to && l.status === 'tayyor';
+    }),
+    [labMine, from, to],
+  );
 
-  // Har bir xizmatning doctorShare foizi bo'yicha aniq hisoblash (services jadvalidagi qiymat).
-  // Agar xizmat uchun doctorShare belgilanmagan bo'lsa — 0%.
+  // Daromad va ulush — rolga qarab
+  const revenue = useMemo(() => {
+    if (isLaborant) {
+      // Laborant uchun — bajarilgan tahlillar narxi
+      // lab_results'da narx yo'q; shifokor tomonidan yo'naltirilgan treatmentdan olinadi
+      let total = 0;
+      for (const l of monthLabs) {
+        if (!l.treatmentId) continue;
+        const tr = treatments.find((t) => t.id === l.treatmentId);
+        total += Number(tr?.amount) || 0;
+      }
+      return total;
+    }
+    return monthTreatments.reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  }, [isLaborant, monthLabs, monthTreatments, treatments]);
+
+  // Ulush — services.doctorShare foizi bo'yicha (laborant uchun ham xizmat shartida qo'yilgan foiz ishlatiladi)
   const share = useMemo(() => {
     let total = 0;
-    for (const t of monthTreatments) {
-      const svcName = t.service ?? t.services?.[0] ?? '';
-      const pct = shareByService.get(svcName) ?? 0;
-      total += Math.round(((Number(t.amount) || 0) * pct) / 100);
+    if (isLaborant) {
+      for (const l of monthLabs) {
+        if (!l.treatmentId) continue;
+        const tr = treatments.find((t) => t.id === l.treatmentId);
+        if (!tr) continue;
+        const svcName = tr.service ?? tr.services?.[0] ?? '';
+        const pct = shareByService.get(svcName) ?? 0;
+        total += Math.round(((Number(tr.amount) || 0) * pct) / 100);
+      }
+    } else {
+      for (const t of monthTreatments) {
+        const svcName = t.service ?? t.services?.[0] ?? '';
+        const pct = shareByService.get(svcName) ?? 0;
+        total += Math.round(((Number(t.amount) || 0) * pct) / 100);
+      }
     }
     return total;
-  }, [monthTreatments, shareByService]);
+  }, [isLaborant, monthLabs, monthTreatments, treatments, shareByService]);
 
   const effectivePct = revenue > 0 ? ((share / revenue) * 100).toFixed(1) : '0';
   const total = (salary?.net ?? 0) + share;
+  const workCount = isLaborant ? monthLabs.length : monthTreatments.length;
 
   return (
     <div className="admin-page">
@@ -109,9 +153,9 @@ export function DoctorPayroll() {
         </div>
         <div className="dp-stat dp-violet">
           <div className="dp-ico"><TrendingUp size={20} /></div>
-          <small>Davolash ulushi ({effectivePct}%)</small>
+          <small>{isLaborant ? 'Tahlil ulushi' : 'Davolash ulushi'} ({effectivePct}%)</small>
           <strong>{fmtSom(share)}</strong>
-          <span>daromad: {fmtSom(revenue)}</span>
+          <span>{workCount} ta ish · daromad: {fmtSom(revenue)}</span>
         </div>
         <div className="dp-stat dp-amber">
           <div className="dp-ico"><Wallet size={20} /></div>
@@ -123,14 +167,30 @@ export function DoctorPayroll() {
 
       <section className="admin-card">
         <div className="admin-card-head">
-          <div><h2>Shu oydagi davolashlar</h2><small>Jami {monthTreatments.length} ta, umumiy daromad {fmtSom(revenue)}</small></div>
+          <div>
+            <h2>Shu oydagi {isLaborant ? 'tahlillar' : 'davolashlar'}</h2>
+            <small>Jami {workCount} ta, umumiy daromad {fmtSom(revenue)}</small>
+          </div>
         </div>
         <div className="admin-table-wrap">
           <table className="admin-table">
-            <thead><tr><th>Sana</th><th>Bemor</th><th>Xizmat</th><th>Status</th><th className="admin-cell-right">Narx</th></tr></thead>
+            <thead><tr><th>Sana</th><th>Bemor</th><th>{isLaborant ? 'Tahlil' : 'Xizmat'}</th><th>Status</th><th className="admin-cell-right">Narx</th></tr></thead>
             <tbody>
-              {monthTreatments.length === 0 ? (
-                <tr><td colSpan={5} className="admin-cell-muted" style={{ textAlign: 'center', padding: 24 }}>Shu oyda davolash yo‘q</td></tr>
+              {workCount === 0 ? (
+                <tr><td colSpan={5} className="admin-cell-muted" style={{ textAlign: 'center', padding: 24 }}>Shu oyda ish yo‘q</td></tr>
+              ) : isLaborant ? (
+                monthLabs.sort((a, b) => (b.docDate ?? '').localeCompare(a.docDate ?? '')).map((l) => {
+                  const tr = treatments.find((t) => t.id === l.treatmentId);
+                  return (
+                    <tr key={l.id}>
+                      <td className="admin-cell-time">{l.docDate ?? '—'}</td>
+                      <td><strong>{l.patientName}</strong></td>
+                      <td className="admin-cell-muted">{l.testType}</td>
+                      <td>{l.status}</td>
+                      <td className="admin-cell-right"><strong>{fmtSom(Number(tr?.amount) || 0)}</strong></td>
+                    </tr>
+                  );
+                })
               ) : monthTreatments.sort((a, b) => b.date.localeCompare(a.date)).map((t) => (
                 <tr key={t.id}>
                   <td className="admin-cell-time">{t.date}</td>
@@ -141,7 +201,7 @@ export function DoctorPayroll() {
                 </tr>
               ))}
             </tbody>
-            {monthTreatments.length > 0 && (
+            {workCount > 0 && (
               <tfoot>
                 <tr>
                   <td colSpan={4} className="admin-cell-muted" style={{ textAlign: 'right', fontWeight: 600 }}>Jami:</td>

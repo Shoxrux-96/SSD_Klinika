@@ -37,7 +37,8 @@ import { DoctorReferrals } from './clinic/DoctorReferrals';
 import { DoctorAttendance } from './clinic/DoctorAttendance';
 import { DoctorPayroll } from './clinic/DoctorPayroll';
 import { DoctorTreatments } from './clinic/DoctorTreatments';
-import { LaborantLab } from './clinic/LaborantLab';
+// Laboratoriya sahifasi — admin va laborant bir xil manba (lab_results jadvali)
+import { AdminLaboratory as LaborantLab } from './admin/pages/AdminLaboratory';
 import { ReceptionLayout } from './reception/ReceptionLayout';
 import { ReceptionOverview } from './reception/ReceptionOverview';
 import { CashierLayout } from './cashier/CashierLayout';

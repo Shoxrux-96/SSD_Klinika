@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { useTreatments } from '../admin/clinicalData';
+import { useTreatments, useLabTests } from '../admin/clinicalData';
 import { useQueue, useServices, useEmployees } from '../admin/store';
 import {
   ClipboardList, Pill, FlaskConical, Users, TrendingUp, Wallet, Activity, FileText, Banknote,
@@ -25,6 +25,7 @@ function periodWindow(period: 'day' | 'month' | 'year'): { from: string; label: 
 export function ClinicOverview() {
   const { user } = useAuth();
   const treatments = useTreatments();
+  const labTests = useLabTests();
   const services = useServices();
   const employees = useEmployees();
   const queue = useQueue();
@@ -91,6 +92,23 @@ export function ClinicOverview() {
   }, [mine, monthStart, shareByService]);
   const monthTotalPay = baseSalary + monthShare;
 
+  // Laborant uchun — bugun yakunlangan va kutilayotgan tahlillar
+  const todayLabsDone = useMemo(
+    () => labTests.filter((l) => (l.docDate ?? '') === today && l.status === 'tayyor'),
+    [labTests, today],
+  );
+  const pendingLabs = useMemo(
+    () => labTests.filter((l) => l.status === 'kutilmoqda' || l.status === 'jarayonda' || l.status === 'yangi'),
+    [labTests],
+  );
+  const myLabs = useMemo(
+    () => labTests.filter((l) =>
+      l.laborant === user?.fullName || l.laborant === user?.id ||
+      l.labDoctor === user?.fullName || l.labDoctor === user?.id,
+    ),
+    [labTests, user],
+  );
+
   const countSeries = useMemo(
     () => bucketize(periodMine, (t) => t.date, () => 1, period),
     [periodMine, period],
@@ -128,6 +146,19 @@ export function ClinicOverview() {
           <>
             <StatTile tone="violet" icon={<TrendingUp size={16} />} label="Bu oyki ulush" value={fmtSom(monthShare)} hint="doctorShare %" />
             <StatTile tone="ok" icon={<Banknote size={16} />} label="Jami oylik + ulush" value={fmtSom(monthTotalPay)} hint={`asos: ${fmtSom(baseSalary)}`} />
+          </>
+        )}
+        {isLaborant && (
+          <>
+            <StatTile
+              tone={pendingLabs.length > 0 ? 'warn' : 'cyan'}
+              icon={<FlaskConical size={16} />}
+              label="Kutayotgan tahlillar"
+              value={pendingLabs.length}
+              hint="yangi / jarayonda"
+            />
+            <StatTile tone="ok" icon={<Pill size={16} />} label="Bugun yakunlangan" value={todayLabsDone.length} hint={today} />
+            <StatTile tone="violet" icon={<Banknote size={16} />} label="Mening tahlillarim" value={myLabs.length} hint="jami bajarilgan" />
           </>
         )}
       </div>

@@ -404,6 +404,19 @@ async function createReadyTest(t: Omit<LabTest, 'id' | 'createdAt' | 'status' | 
   testsState = [labFromRow(row), ...testsState];
   emitTests();
 }
+// Lab test harakatlari uchun audit log — kim boshladi, kim yakunladi
+async function logLab(action: string, labId: string, before?: any, after?: any) {
+  try {
+    await labApi('/audit-logs', {
+      method: 'POST',
+      body: JSON.stringify({
+        action, entity: 'lab_result', entityId: labId,
+        before: before ?? null, after: after ?? null,
+      }),
+    });
+  } catch { /* audit — best effort */ }
+}
+
 async function updateTestStatus(id: string, status: LabStatus) {
   const existing = testsState.find((x) => x.id === id);
   if (!existing) return;
@@ -411,6 +424,7 @@ async function updateTestStatus(id: string, status: LabStatus) {
   const row = await labApi<any>(`/lab-results/${id}`, { method: 'PATCH', body: JSON.stringify(labToRowBody(merged)) });
   testsState = testsState.map((t) => (t.id === id ? labFromRow(row) : t));
   emitTests();
+  await logLab(`lab:${status}`, id, { status: existing.status }, { status });
 }
 async function saveTestDoc(id: string, patch: Partial<LabTest>) {
   const existing = testsState.find((x) => x.id === id);
@@ -419,11 +433,15 @@ async function saveTestDoc(id: string, patch: Partial<LabTest>) {
   const row = await labApi<any>(`/lab-results/${id}`, { method: 'PATCH', body: JSON.stringify(labToRowBody(merged)) });
   testsState = testsState.map((t) => (t.id === id ? labFromRow(row) : t));
   emitTests();
+  await logLab('lab:result_saved', id, null, {
+    status: 'tayyor', patientName: merged.patientName, testType: merged.testType,
+  });
 }
 async function removeTest(id: string) {
   await labApi(`/lab-results/${id}`, { method: 'DELETE' });
   testsState = testsState.filter((t) => t.id !== id);
   emitTests();
+  await logLab('lab:deleted', id);
 }
 
 function fmtDate(ms: number) {
