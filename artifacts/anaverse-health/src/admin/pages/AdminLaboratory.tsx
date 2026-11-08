@@ -593,7 +593,14 @@ export function AdminLaboratory() {
                   Tahlillar yoʻq — "Yangi tahlil" tugmasini bosing.
                 </td></tr>
               )}
-              {pg.pageRows.map((t) => (
+              {pg.pageRows.map((t) => {
+                // 1 kunlik grace: tayyor deb belgilangan tahlil keyingi 24 soat ichida
+                // hali ham tahrir qilinsa bo'ladi. 24 soat o'tsa — faqat ko'rish.
+                const DAY_MS = 24 * 60 * 60 * 1000;
+                const withinGrace =
+                  t.status === 'tayyor' && t.readyAt && (Date.now() - t.readyAt) < DAY_MS;
+                const canEdit = t.status === 'kutilmoqda' || t.status === 'jarayonda' || withinGrace;
+                return (
                 <tr key={t.id}>
                   <td className="admin-cell-muted">{fmtDate(t.createdAt)}</td>
                   <td>{t.patientName}</td>
@@ -608,7 +615,7 @@ export function AdminLaboratory() {
                   <td><span className={`admin-chip ${statusChip[t.status]}`}>{statusLabel[t.status]}</span></td>
                   <td>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      {(t.status === 'kutilmoqda' || t.status === 'jarayonda') && (
+                      {canEdit && (
                         <button
                           className="admin-btn admin-btn-primary"
                           style={{ padding: '4px 8px', fontSize: 12 }}
@@ -637,7 +644,8 @@ export function AdminLaboratory() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
           <TablePagination {...pg} />

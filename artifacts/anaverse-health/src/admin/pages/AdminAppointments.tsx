@@ -266,15 +266,15 @@ function statusChip(s: Status) {
   return <span className={`admin-chip chip-${cls}`}>{STATUS_LABEL[s]}</span>;
 }
 
-// 5 daqiqalik grace: slot tugaganidan keyin 5 min o'tsa, status tahrir qilinmaydi
+// 1 kunlik grace: qabul kuni + 24 soat davomida status tahrir qilinadi, keyin bloklanadi.
 const SLOT_MINUTES = 30;
-const GRACE_MINUTES = 5;
+const GRACE_MS = 24 * 60 * 60 * 1000; // 1 kun
 
 function slotLockMs(date: string, time: string): number {
   const [h, m] = time.split(':').map(Number);
   const [y, mo, d] = date.split('-').map(Number);
   const start = new Date(y, (mo ?? 1) - 1, d ?? 1, h ?? 0, m ?? 0, 0, 0);
-  return start.getTime() + (SLOT_MINUTES + GRACE_MINUTES) * 60_000;
+  return start.getTime() + SLOT_MINUTES * 60_000 + GRACE_MS;
 }
 
 function useNow(intervalMs = 30_000): number {

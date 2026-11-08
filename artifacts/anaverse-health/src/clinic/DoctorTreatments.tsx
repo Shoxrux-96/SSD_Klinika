@@ -184,8 +184,17 @@ export function DoctorTreatments() {
                   <td><span className={`admin-chip chip-${t.status === 'yakunlandi' ? 'ok' : t.status === 'davolanmoqda' ? 'wait' : 'muted'}`}>{t.status}</span></td>
                   <td className="admin-cell-right">
                     <button className="admin-icon-btn sm" title="003 forma" onClick={() => setViewing(t)}><Eye size={14} /></button>
-                    <button className="admin-icon-btn sm" title={t.status === 'yakunlandi' ? 'Yakunlangan' : 'Tahrirlash'}
-                      disabled={t.status === 'yakunlandi'} onClick={() => setEditing(t)}><Edit size={14} /></button>
+                    {(() => {
+                      // 1 kunlik grace: yakunlangan bo'lsa ham bugun yoki kecha bo'lsa tahrir mumkin
+                      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
+                        .toISOString().slice(0, 10);
+                      const locked = t.status === 'yakunlandi' && (t.date ?? '') < yesterday;
+                      return (
+                        <button className="admin-icon-btn sm"
+                          title={locked ? "Yakunlanganidan 1 kundan ko'p o'tgan" : 'Tahrirlash'}
+                          disabled={locked} onClick={() => setEditing(t)}><Edit size={14} /></button>
+                      );
+                    })()}
                   </td>
                 </tr>
               ))}

@@ -124,13 +124,24 @@ export function AdminTreatments() {
                   <td><span className={`admin-chip chip-${t.status === 'yakunlandi' ? 'ok' : t.status === 'davolanmoqda' ? 'wait' : 'muted'}`}>{t.status}</span></td>
                   <td className="admin-cell-right">
                     <button className="admin-icon-btn sm" aria-label="Ko'rish" title="003 forma ko'rinishida" onClick={() => setViewing(t)}><Eye size={14} /></button>
-                    <button
-                      className="admin-icon-btn sm"
-                      aria-label="Tahrirlash"
-                      title={t.status === 'yakunlandi' ? 'Yakunlangan — tahrirlab bo\'lmaydi' : 'Tahrirlash'}
-                      disabled={t.status === 'yakunlandi'}
-                      onClick={() => setEditing(t)}
-                    ><Edit size={14} /></button>
+                    {(() => {
+                      // 1 kunlik grace: yakunlangan bo'lsa ham, davolash sanasi bugun yoki
+                      // kecha bo'lsa — tahrir imkoni saqlanadi. Keyin bloklanadi.
+                      const today = new Date();
+                      const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000)
+                        .toISOString().slice(0, 10);
+                      const withinGrace = t.status === 'yakunlandi' && (t.date ?? '') >= yesterday;
+                      const locked = t.status === 'yakunlandi' && !withinGrace;
+                      return (
+                        <button
+                          className="admin-icon-btn sm"
+                          aria-label="Tahrirlash"
+                          title={locked ? "Yakunlanganidan 1 kundan ko'p o'tgan — tahrir yopiq" : "Tahrirlash"}
+                          disabled={locked}
+                          onClick={() => setEditing(t)}
+                        ><Edit size={14} /></button>
+                      );
+                    })()}
                   </td>
                 </tr>
               ))}
