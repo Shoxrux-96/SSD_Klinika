@@ -43,9 +43,9 @@ const RULES: Rule[] = [
   { path: "/patients", methods: ["DELETE"], roles: [...ADMIN] },
 
   // --- Qabul va navbat ---
-  { path: "/appointments", methods: ["GET"], roles: ["admin", "shifokor", "laborant", "registrator", "kassir"] },
+  { path: "/appointments", methods: ["GET"], roles: ["admin", "shifokor", "laborant", "registrator", "kassir", "buxgalter"] },
   { path: "/appointments", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: ["admin", "registrator", "shifokor"] },
-  { path: "/queue",        methods: ["GET"], roles: ["admin", "shifokor", "laborant", "registrator", "kassir"] },
+  { path: "/queue",        methods: ["GET"], roles: ["admin", "shifokor", "laborant", "registrator", "kassir", "buxgalter"] },
   { path: "/queue",        methods: ["POST", "PUT", "PATCH", "DELETE"], roles: ["admin", "registrator", "shifokor"] },
 
   // --- Xizmatlar katalogi ---
@@ -57,14 +57,14 @@ const RULES: Rule[] = [
   { path: "/assignments",       methods: ["POST", "PUT", "PATCH", "DELETE"], roles: [...ADMIN] },
 
   // --- Klinik yozuvlar ---
-  { path: "/treatments", methods: ["GET"], roles: ["admin", "shifokor", "laborant", "registrator", "kassir"] },
+  { path: "/treatments", methods: ["GET"], roles: ["admin", "shifokor", "laborant", "registrator", "kassir", "buxgalter"] },
   { path: "/treatments", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: ["admin", "shifokor"] },
 
-  { path: "/prescriptions", methods: ["GET"], roles: ["admin", "shifokor", "laborant", "registrator", "kassir"] },
+  { path: "/prescriptions", methods: ["GET"], roles: ["admin", "shifokor", "laborant", "registrator", "kassir", "buxgalter"] },
   { path: "/prescriptions", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: ["admin", "shifokor"] },
 
   // Laboratoriya natijalari — shifokor faqat ko'radi, YOZISH faqat laborant (+admin)
-  { path: "/lab-results", methods: ["GET"], roles: ["admin", "shifokor", "laborant", "registrator", "kassir"] },
+  { path: "/lab-results", methods: ["GET"], roles: ["admin", "shifokor", "laborant", "registrator", "kassir", "buxgalter"] },
   { path: "/lab-results", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: ["admin", "laborant"] },
 
   { path: "/dental-records", methods: ["GET"], roles: ["admin", "shifokor", "laborant", "registrator", "kassir"] },

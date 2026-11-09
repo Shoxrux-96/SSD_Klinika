@@ -72,7 +72,7 @@ const PERMISSIONS: Permission[] = [
   { key: 'delete_patients', group: 'patients',  label: "Bemorni o'chirish",              icon: UserX,           roles: ['admin'] },
 
   // Qabul
-  { key: 'read_appts',      group: 'appts',     label: "Qabullar ro'yxati",              icon: CalendarCheck,   roles: ['admin', 'shifokor', 'laborant', 'registrator', 'kassir'] },
+  { key: 'read_appts',      group: 'appts',     label: "Qabullar ro'yxati",              icon: CalendarCheck,   roles: ['admin', 'shifokor', 'laborant', 'registrator', 'kassir', 'buxgalter'] },
   { key: 'write_appts',     group: 'appts',     label: "Qabul yaratish/o'zgartirish",    icon: CalendarCheck,   roles: ['admin', 'registrator', 'shifokor'] },
   { key: 'manage_queue',    group: 'appts',     label: "Navbat boshqarish",              icon: Activity,        roles: ['admin', 'registrator', 'shifokor'] },
 
@@ -81,7 +81,7 @@ const PERMISSIONS: Permission[] = [
   { key: 'write_services',  group: 'services',  label: "Xizmat yaratish / narx",         icon: Briefcase,       roles: ['admin'] },
 
   // Klinik
-  { key: 'read_clinical',   group: 'clinical',  label: "Davolash / retsept / tahlil",    icon: ClipboardList,   roles: ['admin', 'shifokor', 'laborant', 'registrator', 'kassir'] },
+  { key: 'read_clinical',   group: 'clinical',  label: "Davolash / retsept / tahlil",    icon: ClipboardList,   roles: ['admin', 'shifokor', 'laborant', 'registrator', 'kassir', 'buxgalter'] },
   { key: 'write_treatment', group: 'clinical',  label: "Davolash yozuvi",                icon: FileText,        roles: ['admin', 'shifokor'] },
   { key: 'write_rx',        group: 'clinical',  label: "Retsept yozish",                 icon: Pill,            roles: ['admin', 'shifokor'] },
   { key: 'write_lab',       group: 'clinical',  label: "Tahlil natijalari",              icon: Microscope,      roles: ['admin', 'shifokor', 'laborant'] },

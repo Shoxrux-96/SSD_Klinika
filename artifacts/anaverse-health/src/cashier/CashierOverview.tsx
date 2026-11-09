@@ -23,13 +23,24 @@ export function CashierOverview() {
   const { user } = useAuth();
   const debts = useDebts();
   const [txns, setTxns] = useState<Txn[]>([]);
+  const [lastUpdated, setLastUpdated] = useState<number>(Date.now());
   const { period, setPeriod } = usePeriod('month');
 
+  const refreshTransactions = async () => {
+    try {
+      const response = await fetch('/api/transactions');
+      const rows = response.ok ? await response.json() : [];
+      setTxns(Array.isArray(rows) ? rows : []);
+      setLastUpdated(Date.now());
+    } catch {
+      setTxns([]);
+    }
+  };
+
   useEffect(() => {
-    fetch('/api/transactions')
-      .then((r) => (r.ok ? r.json() : []))
-      .then((rows: any[]) => setTxns(Array.isArray(rows) ? rows : []))
-      .catch(() => setTxns([]));
+    void refreshTransactions();
+    const interval = window.setInterval(() => { void refreshTransactions(); }, 15000);
+    return () => window.clearInterval(interval);
   }, []);
 
   const { from: periodFrom, label: periodLabel } = useMemo(() => periodWindow(period), [period]);
@@ -94,7 +105,10 @@ export function CashierOverview() {
       <div className="admin-page-head">
         <div>
           <h1>Salom, {user?.fullName}</h1>
-          <p>Moliya faoliyati va davriy ko‘rsatkichlar</p>
+          <p>{user?.role === 'buxgalter' ? 'Kassa va moliya operatsiyalari — real-time kuzatuv' : 'Moliya faoliyati va davriy ko‘rsatkichlar'}</p>
+        </div>
+        <div className="admin-page-actions">
+          <span className="admin-chip chip-ok">Live • {new Date(lastUpdated).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
         </div>
       </div>
 
