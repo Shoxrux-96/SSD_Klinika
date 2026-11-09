@@ -48,7 +48,6 @@ const sections: NavSection[] = [
   { key: 'moliya', label: 'Xizmatlar bo‘limi', items: [
     { to: '/admin/services', icon: Briefcase, label: 'Xizmatlar' },
     { to: '/admin/assignments', icon: Link2, label: 'Xizmat biriktirish' },
-    { to: '/admin/reports', icon: FileBarChart, label: 'Hisobotlar' },
   ]},
   { key: 'davolash', label: 'Davolash bo‘limi', items: [
     { to: '/admin/treatments', icon: ClipboardList, label: 'Davolash tarixi' },
@@ -65,6 +64,7 @@ const sections: NavSection[] = [
 
 const topItems: NavItem[] = [
   { to: '/admin', end: true, icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/admin/reports', icon: FileBarChart, label: 'Hisobotlar' },
   { to: '/admin/cashier', icon: Receipt, label: 'Kassa' },
   { to: '/admin/finance', icon: Wallet, label: 'Moliya' },
   { to: '/admin/call-center', icon: PhoneCall, label: 'Call markaz' },

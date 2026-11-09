@@ -5513,3 +5513,183 @@ input, select, textarea {
   margin-top: 8px; padding: 8px 10px; background: #fef2f2;
   border: 1px solid #fecaca; color: #991b1b; border-radius: 6px; font-size: 12.5px;
 }
+
+/* ============================================================
+   MOBIL RESPONSIVE QOSHIMCHA (2026-11)
+   Tashkilot: tablet 820px -> telefon 520px -> kichik 420px
+   ============================================================ */
+
+/* Tabletlar (820px gacha) — jadvallar, formalar */
+@media (max-width: 820px) {
+  /* Admin page head — tugma va sarlavha alohida qatorga */
+  .admin-page-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .admin-page-head h1 { font-size: 22px; }
+  .admin-page-head p { font-size: 13px; }
+  .admin-page-actions {
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  .admin-page-actions .admin-btn { flex: 1 1 auto; min-width: 0; justify-content: center; }
+
+  /* Jadvallar horizontal scroll (-webkit touch) */
+  .admin-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    margin: 0 -18px; /* page padding'ni to'xtatish */
+    padding: 0 18px;
+  }
+  .admin-table { min-width: 640px; } /* majburiy scroll */
+
+  /* Modallar — mobil ekranda to'liq ekran */
+  .appt-modal-backdrop,
+  .admin-modal-backdrop {
+    padding: 0 !important;
+    align-items: stretch !important;
+  }
+  .appt-modal,
+  .admin-modal,
+  .tw-modal,
+  .emp-modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100vh;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+  }
+  .appt-modal-head,
+  .admin-modal-head { padding: 14px 16px; }
+  .appt-modal-body,
+  .admin-modal-body { padding: 14px 16px; }
+  .appt-modal-foot,
+  .admin-modal-foot {
+    padding: 12px 16px;
+    position: sticky;
+    bottom: 0;
+    background: #fff;
+    border-top: 1px solid #e2e8f0;
+  }
+
+  /* 2 ustunli form row — 1 ustun */
+  .appt-modal-row { grid-template-columns: 1fr !important; }
+
+  /* Tugmalar katta bo'lsin (touch target) */
+  .admin-btn { min-height: 42px; padding: 10px 14px; font-size: 14px; }
+  .admin-icon-btn { min-width: 36px; min-height: 36px; }
+  .admin-icon-btn.sm { min-width: 32px; min-height: 32px; }
+
+  /* Input/select touch-friendly */
+  .appt-modal input, .appt-modal select, .appt-modal textarea,
+  .admin-modal input, .admin-modal select, .admin-modal textarea,
+  .admin-field input, .admin-field select, .admin-field textarea {
+    min-height: 42px;
+    font-size: 15px; /* iOS zoom'ni oldini olish */
+  }
+
+  /* Dashboard chart panel */
+  .dc-grid, .dc-top-grid { grid-template-columns: 1fr !important; }
+  .dc-tiles { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; }
+  .dc-tile strong { font-size: 18px !important; }
+  .dc-panel-head h4 { font-size: 13px; }
+  .dc-period-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .dc-period-head > div { width: 100%; }
+  .dc-period-tabs {
+    width: 100%; display: flex;
+  }
+  .dc-period-tabs button { flex: 1; }
+
+  /* RBAC rollar kartochkalari */
+  .rbac-role-cards { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; }
+
+  /* Appointment calendar — kunlar grid */
+  .appt-week-grid, .appt-month-grid { font-size: 11px; }
+  .appt-slot { min-height: 60px; }
+
+  /* Hodim kartachkalari */
+  .emp-grid { grid-template-columns: 1fr !important; }
+
+  /* Settings — xarita picker */
+  .admin-map-picker-map { height: 280px !important; }
+}
+
+/* Telefonlar (520px gacha) */
+@media (max-width: 520px) {
+  .admin-topbar {
+    padding: 10px 14px !important;
+    gap: 8px !important;
+    flex-wrap: wrap;
+  }
+  .admin-topbar-actions { gap: 6px; flex-wrap: wrap; }
+  .admin-content { padding: 14px !important; }
+  .admin-page-head h1 { font-size: 19px; }
+
+  /* Qidirish inputi qisqa */
+  .admin-search { min-width: 0; flex: 1; }
+  .admin-search input { font-size: 14px; }
+
+  /* Dashboard tile — 2 ustun kichik ekranda ham qulay */
+  .dc-tiles { gap: 8px; }
+  .dc-tile { padding: 10px; }
+  .dc-tile strong { font-size: 16px !important; }
+  .dc-tile small { font-size: 10px; }
+
+  /* RBAC rol kartochkalari — 1 ustun */
+  .rbac-role-cards { grid-template-columns: 1fr !important; }
+  .rbac-role-col { min-width: 56px !important; width: 56px !important; }
+  .rbac-role-header-cell small { display: none; } /* faqat chip */
+
+  /* Modal input padding */
+  .appt-modal input, .appt-modal select, .appt-modal textarea {
+    padding: 10px 12px;
+  }
+
+  /* Pagination — kichik ekranda vertikal */
+  .admin-table-pag {
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  /* 003 forma — mobil preview */
+  .f003-wrap { padding: 12px !important; }
+  .f003-row { grid-template-columns: 1fr !important; }
+
+  /* Lab doc body — stacked */
+  .lab-doc-body { padding: 10px !important; }
+
+  /* Login card */
+  .login-card { padding: 20px !important; max-width: 100% !important; }
+}
+
+/* Juda kichik (420px gacha — iPhone SE va shuga o'xshash) */
+@media (max-width: 420px) {
+  .admin-shell { font-size: 14px; }
+  .admin-page-head h1 { font-size: 17px; }
+  .admin-brand-name strong { font-size: 13px; }
+  .admin-brand-name small { font-size: 10px; }
+  .dc-tiles { grid-template-columns: 1fr 1fr; }
+  .rbac-tick { width: 24px !important; height: 24px !important; }
+}
+
+/* Jadval ichidagi muhim ustun — ism mobil ekranda qisqartirilmasin */
+@media (max-width: 820px) {
+  .admin-table td, .admin-table th {
+    white-space: nowrap;
+    padding: 8px 10px;
+    font-size: 12.5px;
+  }
+  .admin-table td strong { white-space: normal; }
+}
+
+/* Iframe/xarita — mobil ekranda bir xil balandlik */
+@media (max-width: 640px) {
+  .admin-map-picker, .admin-map-picker-map { height: 260px; }
+}

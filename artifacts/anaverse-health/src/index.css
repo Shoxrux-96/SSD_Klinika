@@ -885,3 +885,47 @@ body {font-size:20px}
   .map-card {min-height:330px}
   .map-footer {align-items:flex-start;font-size:12px}
 }
+
+/* ===== PUBLIC SAHIFA — qo'shimcha mobil tuzatishlar (2026-11) ===== */
+@media (max-width: 720px) {
+  /* Doktorlar karuseli — mobil uchun */
+  .doctor-grid { grid-template-columns: 1fr 1fr !important; gap: 10px; }
+
+  /* Hero iframe/3D model — mobil ekranda kichik */
+  .hero-visual, .anatomy-scene { min-height: 320px !important; }
+
+  /* Appointment forma — bo'shliqlarni kamaytirish */
+  .appointment-form-wrap { padding: 20px 16px !important; }
+  .appointment-form-grid { grid-template-columns: 1fr !important; }
+
+  /* Login modal mobil uchun */
+  .login-modal-backdrop { padding: 12px; align-items: center; }
+  .login-card { padding: 20px 18px !important; max-width: 100% !important; }
+  .login-card input { font-size: 15px; min-height: 44px; }
+  .login-card button { min-height: 44px; }
+
+  /* Clinic map — mobil balandlik */
+  .cm-map-box { height: 300px !important; }
+  .cm-actions { flex-direction: column; }
+  .cm-btn { flex: 1 1 100% !important; justify-content: center; }
+}
+
+@media (max-width: 480px) {
+  /* Doktor karuseli — telefon ekranida 1 ustun */
+  .doctor-grid { grid-template-columns: 1fr !important; }
+  .doctor-card img { height: 200px !important; }
+
+  /* Clinic map kichik ekranda */
+  .cm-map-box { height: 260px !important; }
+  .cm-info { padding: 14px 16px !important; }
+  .cm-copy strong { font-size: 14px; }
+  .cm-copy span { font-size: 12px; }
+}
+
+/* iOS safe area (notch) uchun */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
+}

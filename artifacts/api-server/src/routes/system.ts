@@ -60,7 +60,9 @@ router.get("/settings", async (_req, res) => {
 });
 router.get("/settings/:key", async (req, res) => {
   const [row] = await db.select().from(settingsTable).where(eq(settingsTable.key, req.params.key));
-  if (!row) return res.status(404).json({ error: "Not found" });
+  // Kalit mavjud bo'lmasa — 200 + null (konsolda ortiqcha 404 bo'lmasin). Client
+  // bu holatda default'ni ishlatadi.
+  if (!row) return res.json({ key: req.params.key, value: null, updatedAt: null });
   res.json(row);
 });
 router.put("/settings/:key", async (req, res) => {

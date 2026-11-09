@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { MapPin, ExternalLink, Navigation, Map as MapIcon, Satellite } from 'lucide-react';
 import { clinicLocations } from './clinicLocations';
 
@@ -7,11 +10,33 @@ const [lat, lng] = loc.position;
 const googleUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
 const googleNaviUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
 const yandexUrl = `https://yandex.uz/maps/?pt=${lng},${lat}&z=17&l=map`;
+const osmUrl = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=18/${lat}/${lng}`;
 
 type MapLayer = 'map' | 'sat';
-// Google Maps embed — !5e0 = ko'cha (roadmap), !5e1 = sputnik (satellite)
-const embedUrl = (layer: MapLayer) =>
-  `https://www.google.com/maps/embed?pb=!1m13!1m8!1m3!1d745.2633842624621!2d60.29050917116395!3d41.654585275322674!3m2!1i1024!2i768!4f13.1!3m2!1m1!2zNDHCsDM5JzE2LjEiTiA2MMKwMTcnMjcuNiJF!5e${layer === 'sat' ? '1' : '0'}!3m2!1suz!2s!4v1794017667934!5m2!1suz!2s`;
+
+// Leaflet'ning standart marker rasmi bundler'da sinmasligi uchun
+// SVG marker iconini inline qilamiz.
+const CLINIC_ICON = L.divIcon({
+  className: 'cm-leaflet-marker',
+  html: `<div class="cm-pin"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s-7-7.5-7-12a7 7 0 0 1 14 0c0 4.5-7 12-7 12z"/><circle cx="12" cy="10" r="3"/></svg></div>`,
+  iconSize: [36, 36],
+  iconAnchor: [18, 34],
+  popupAnchor: [0, -30],
+});
+
+// Tile provaytorlari — bepul, API key kerakmas
+const TILES = {
+  // OpenStreetMap — rasmiy, bepul, cheklanmagan
+  map: {
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> hissadorlari',
+  },
+  // ESRI World Imagery — bepul sputnik qatlami, API key kerakmas
+  sat: {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri, Maxar, Earthstar Geographics',
+  },
+};
 
 export function ClinicMap() {
   const [layer, setLayer] = useState<MapLayer>('map');
@@ -48,26 +73,37 @@ export function ClinicMap() {
             <Satellite size={14} /> Sputnik
           </button>
         </div>
-        <iframe
+        <MapContainer
           key={layer}
-          src={embedUrl(layer)}
-          title="Klinika joylashuvi — Google Maps"
-          className="cm-iframe"
-          loading="lazy"
-          allowFullScreen
-          referrerPolicy="strict-origin-when-cross-origin"
-        />
+          center={[lat, lng]}
+          zoom={17}
+          scrollWheelZoom
+          className="cm-leaflet"
+          attributionControl={false}
+        >
+          <TileLayer
+            url={TILES[layer].url}
+            attribution={TILES[layer].attribution}
+            maxZoom={19}
+          />
+          <Marker position={[lat, lng]} icon={CLINIC_ICON}>
+            <Popup>
+              <strong>{loc.name}</strong><br />
+              {loc.address}
+            </Popup>
+          </Marker>
+        </MapContainer>
       </div>
 
       <div className="cm-actions">
-        <a className="cm-btn cm-btn-google" href={googleUrl} target="_blank" rel="noreferrer">
-          <ExternalLink size={14} /> Google Maps
+        <a className="cm-btn cm-btn-osm" href={osmUrl} target="_blank" rel="noreferrer">
+          <ExternalLink size={14} /> OpenStreetMap
         </a>
         <a className="cm-btn cm-btn-yandex" href={yandexUrl} target="_blank" rel="noreferrer">
           <ExternalLink size={14} /> Yandex Maps
         </a>
         <a className="cm-btn cm-btn-navi" href={googleNaviUrl} target="_blank" rel="noreferrer">
-          <Navigation size={14} /> Yo‘nalish
+          <Navigation size={14} /> Yo'nalish (Google)
         </a>
       </div>
     </div>
@@ -100,7 +136,10 @@ const css = `
 .cm-copy span { font-size: 13px; color: #475569; }
 .cm-coord { font-size: 11.5px !important; color: #94a3b8 !important; font-family: ui-monospace, monospace; }
 .cm-map-box { width: 100%; height: 380px; background: #f1f5f9; position: relative; }
-.cm-iframe { width: 100%; height: 100%; border: 0; display: block; }
+.cm-leaflet { width: 100%; height: 100%; border: 0; display: block; z-index: 1; }
+.cm-leaflet-marker { background: transparent; border: 0; }
+.cm-pin { color: #ff3c00; filter: drop-shadow(0 4px 10px rgba(255, 60, 0, 0.45)); }
+.cm-pin svg { stroke: #ff3c00; fill: #fff; }
 .cm-layer-switch {
   position: absolute; top: 12px; left: 12px; z-index: 5;
   display: inline-flex; gap: 2px; padding: 4px;
@@ -132,8 +171,8 @@ const css = `
 }
 .cm-btn-yandex { background: #ffcc00; color: #0f172a; }
 .cm-btn-yandex:hover { background: #f5b800; transform: translateY(-1px); box-shadow: 0 8px 20px -8px rgba(245,184,0,.55); }
-.cm-btn-google { background: #fff; color: #1a73e8; border-color: #dadce0; }
-.cm-btn-google:hover { background: #1a73e8; color: #fff; border-color: #1a73e8; transform: translateY(-1px); }
+.cm-btn-osm { background: #7bb33e; color: #fff; }
+.cm-btn-osm:hover { background: #6aa02e; transform: translateY(-1px); box-shadow: 0 8px 20px -8px rgba(123,179,62,.55); }
 .cm-btn-navi { background: linear-gradient(135deg,#ff5a2e,#ff3c00); color: #fff; }
 .cm-btn-navi:hover { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 8px 20px -8px rgba(255,90,46,.55); }
 @media (max-width: 640px) {

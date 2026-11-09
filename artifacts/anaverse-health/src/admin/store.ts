@@ -120,16 +120,47 @@ async function api<T = any>(path: string, init?: RequestInit): Promise<T> {
 }
 
 async function refetchAll() {
-  const [employees, serviceCategories, services, assignments, appointments, patients, queue] = await Promise.all([
-    api<Employee[]>('/employees'),
-    api<ServiceCategory[]>('/service-categories'),
-    api<Service[]>('/services'),
-    api<ServiceAssignment[]>('/assignments'),
-    api<Appointment[]>('/appointments'),
-    api<Patient[]>('/patients'),
-    api<QueueItem[]>('/queue'),
+  // Public endpointlar — hamma uchun ochiq. Auth talab qiluvchi endpointlar faqat
+  // login qilgan foydalanuvchilarga. Bosh sahifaga kirganda, auth kerak bo'lgan
+  // endpointlar chaqirilmaydi — console'da ortiqcha 401 chiqmaydi.
+  const safe = async <T>(path: string): Promise<T> => {
+    try { return (await api<T>(path)) as T; } catch { return [] as unknown as T; }
+  };
+  const hasToken =
+    typeof window !== 'undefined' && !!window.localStorage?.getItem('ssd:auth:token');
+
+  // Public — har doim
+  const [employees, serviceCategories, services, assignments] = await Promise.all([
+    safe<Employee[]>('/employees'),
+    safe<ServiceCategory[]>('/service-categories'),
+    safe<Service[]>('/services'),
+    safe<ServiceAssignment[]>('/assignments'),
   ]);
-  state = { employees, serviceCategories, services, assignments, appointments, patients, queue };
+
+  // Private — faqat login bo'lsa
+  let appointments: Appointment[] = [];
+  let patients: Patient[] = [];
+  let queue: QueueItem[] = [];
+  if (hasToken) {
+    const [a, p, q] = await Promise.all([
+      safe<Appointment[]>('/appointments'),
+      safe<Patient[]>('/patients'),
+      safe<QueueItem[]>('/queue'),
+    ]);
+    if (Array.isArray(a)) appointments = a as Appointment[];
+    if (Array.isArray(p)) patients = p as Patient[];
+    if (Array.isArray(q)) queue = q as QueueItem[];
+  }
+
+  state = {
+    employees:         Array.isArray(employees) ? employees : [],
+    serviceCategories: Array.isArray(serviceCategories) ? serviceCategories : [],
+    services:          Array.isArray(services) ? services : [],
+    assignments:       Array.isArray(assignments) ? assignments : [],
+    appointments:      Array.isArray(appointments) ? appointments : [],
+    patients:          Array.isArray(patients) ? patients : [],
+    queue:             Array.isArray(queue) ? queue : [],
+  };
   emit();
 }
 

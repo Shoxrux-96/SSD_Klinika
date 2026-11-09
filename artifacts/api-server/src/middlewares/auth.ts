@@ -12,18 +12,48 @@ const PUBLIC_PATHS = new Set([
   "/auth/logout",
 ]);
 
+// Bosh sahifa (public landing page) uchun kerakli GET endpointlar —
+// shifokor karuseli, xizmatlar katalogi, aloqa ma'lumotlari. Faqat o'qish
+// uchun. Yozish (POST/PUT/PATCH/DELETE) hamon avtorizatsiya talab qiladi.
+const PUBLIC_GET_PATHS = new Set([
+  "/employees",
+  "/services",
+  "/service-categories",
+  "/assignments",
+]);
+
+// `/settings/<key>` uchun — faqat landing page kerak bo'lgan kalitlar
+const PUBLIC_SETTING_KEYS = new Set([
+  "ssd-contact-settings",
+  "ssd-promo-settings",
+  "ssd-clinic-info",
+]);
+
 const JWT_SECRET = process.env.JWT_SECRET ?? "ssd-klinika-dev-secret-change-me";
 
-function isPublicPath(reqPath: string): boolean {
+function stripApi(p: string) {
+  return p.replace(/^\/api/, "");
+}
+
+function isPublicPath(reqPath: string, method: string): boolean {
   if (PUBLIC_PATHS.has(reqPath)) return true;
   if (reqPath.startsWith("/docs")) return true;
   if (reqPath.startsWith("/api/docs")) return true;
-  return PUBLIC_PATHS.has(reqPath.replace(/^\/api/, ""));
+  const bare = stripApi(reqPath);
+  if (PUBLIC_PATHS.has(bare)) return true;
+  // Faqat GET so'rovlarga ochiq bo'lgan endpointlar
+  if (method === "GET" || method === "HEAD") {
+    if (PUBLIC_GET_PATHS.has(bare)) return true;
+    // /settings/<key> — faqat belgilangan kalitlar uchun
+    const m = bare.match(/^\/settings\/([^/]+)$/);
+    if (m && PUBLIC_SETTING_KEYS.has(decodeURIComponent(m[1]))) return true;
+  }
+  return false;
 }
 
 export async function apiKeyAuth(req: Request, res: Response, next: NextFunction) {
   if (process.env.AUTH_DISABLED === "true") return next();
-  if (isPublicPath(req.path)) return next();
+  if (isPublicPath(req.path, req.method)) return next();
   if (req.method === "OPTIONS") return next();
 
   const headerKey = req.header("x-api-key");

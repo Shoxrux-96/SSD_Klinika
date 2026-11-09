@@ -286,9 +286,11 @@ function AdminMapPicker({
         scrollWheelZoom
         className="admin-map-picker-map"
       >
+        {/* OpenStreetMap — rasmiy, bepul, API key kerakmas */}
         <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; OpenStreetMap'
+          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> hissadorlari'
+          maxZoom={19}
         />
         <AdminMapClicker onPick={onChange} />
         <AdminMapFlyTo position={position} />

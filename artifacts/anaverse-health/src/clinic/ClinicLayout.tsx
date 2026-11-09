@@ -17,6 +17,7 @@ const shifokorSections: NavSection[] = [
     { to: '/clinic/treatments', icon: ClipboardList, label: 'Davolash tarixi' },
     { to: '/clinic/prescriptions', icon: Pill, label: 'Retseptlar' },
     { to: '/clinic/referrals', icon: Share2, label: 'Yo‘naltirilgan xizmatlar' },
+    { to: '/clinic/laboratory', icon: FlaskConical, label: 'Lab natijalari (ko‘rish)' },
   ]},
   { key: 'shaxsiy', label: 'Shaxsiy', items: [
     { to: '/clinic/attendance', icon: CalendarCheck, label: 'Mening davomatim' },

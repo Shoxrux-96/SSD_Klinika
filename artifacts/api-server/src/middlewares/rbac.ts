@@ -63,8 +63,9 @@ const RULES: Rule[] = [
   { path: "/prescriptions", methods: ["GET"], roles: ["admin", "shifokor", "laborant", "registrator", "kassir"] },
   { path: "/prescriptions", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: ["admin", "shifokor"] },
 
+  // Laboratoriya natijalari — shifokor faqat ko'radi, YOZISH faqat laborant (+admin)
   { path: "/lab-results", methods: ["GET"], roles: ["admin", "shifokor", "laborant", "registrator", "kassir"] },
-  { path: "/lab-results", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: ["admin", "shifokor", "laborant"] },
+  { path: "/lab-results", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: ["admin", "laborant"] },
 
   { path: "/dental-records", methods: ["GET"], roles: ["admin", "shifokor", "laborant", "registrator", "kassir"] },
   { path: "/dental-records", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: ["admin", "shifokor"] },
@@ -97,8 +98,18 @@ const RULES: Rule[] = [
 // Autentifikatsiya talab qilinmaydigan path'lar (auth.ts'da batafsil belgilangan).
 const PUBLIC_PREFIXES = ["/healthz", "/docs", "/openapi", "/auth/"];
 
-function isPublic(path: string): boolean {
-  return PUBLIC_PREFIXES.some((p) => path.startsWith(p));
+// Bosh sahifa uchun public GET endpoints (auth.ts'ga mos)
+const PUBLIC_GET = new Set(["/employees", "/services", "/service-categories", "/assignments"]);
+const PUBLIC_SETTING_KEYS = new Set(["ssd-contact-settings", "ssd-promo-settings", "ssd-clinic-info"]);
+
+function isPublic(path: string, method?: string): boolean {
+  if (PUBLIC_PREFIXES.some((p) => path.startsWith(p))) return true;
+  if (method === "GET" || method === "HEAD") {
+    if (PUBLIC_GET.has(path)) return true;
+    const m = path.match(/^\/settings\/([^/]+)$/);
+    if (m && PUBLIC_SETTING_KEYS.has(decodeURIComponent(m[1]))) return true;
+  }
+  return false;
 }
 
 function findRule(path: string, method: string): Rule | undefined {
@@ -114,7 +125,7 @@ function findRule(path: string, method: string): Rule | undefined {
 export function rbac(req: Request, res: Response, next: NextFunction) {
   if (process.env.AUTH_DISABLED === "true") return next();
   if (req.method === "OPTIONS") return next();
-  if (isPublic(req.path)) return next();
+  if (isPublic(req.path, req.method)) return next();
 
   const authUser = (req as any).authUser as { role?: Role } | undefined;
   const apiKey = (req as any).apiKey as { scope?: string } | undefined;

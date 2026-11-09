@@ -98,7 +98,10 @@ server {
     # Xavfsizlik sarlavhalari (TLS vaqtida certbot HSTS ni qo'shadi)
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-Frame-Options "DENY" always;
-    add_header Referrer-Policy "no-referrer" always;
+    # Referrer-Policy — "no-referrer" OSM/CartoDB tile serverlariga 403 keltirardi.
+    # "strict-origin-when-cross-origin" — tiles'ga origin yuboradi (443 orqali), lekin
+    # URL path uzatmaydi. Xavfsizlik va funksionallik o'rtasida balans.
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
 
     access_log /var/log/nginx/ssd-klinika.access.log;

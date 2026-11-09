@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { usePatients, useEmployees } from '../store';
 import { usePagination, TablePagination } from '../components/TablePagination';
+import { useAuth } from '../../auth/AuthContext';
 
 function ModalPortal({ children }: { children: ReactNode }) {
   useEffect(() => {
@@ -463,6 +464,10 @@ const statusChip: Record<LabStatus, string> = {
 };
 
 export function AdminLaboratory() {
+  // Shifokor faqat KO'RISH imkoniyatiga ega — yozish laborant va admin uchun
+  const auth = useAuth();
+  const readOnly = auth.user?.role === 'shifokor';
+
   const tests = useTests();
   const patients = usePatients().filter((p) => !p.archived);
   const allEmployees = useEmployees().filter((e) => !e.archived);
@@ -507,14 +512,20 @@ export function AdminLaboratory() {
     <div className="admin-page">
       <div className="admin-page-head">
         <div>
-          <h1>Laboratoriya</h1>
-          <p>Tahlillarni qabul qilish, hujjat shabloniga natijalarni yozib saqlash va chop etish.</p>
+          <h1>Laboratoriya {readOnly && <span style={{ fontSize: 13, color: '#64748b', marginLeft: 8 }}>(ko'rish rejimi)</span>}</h1>
+          <p>
+            {readOnly
+              ? 'Shifokor sifatida — laboratoriya natijalarini faqat ko\'rib va chop eta olasiz. Yozish laborant huquqida.'
+              : 'Tahlillarni qabul qilish, hujjat shabloniga natijalarni yozib saqlash va chop etish.'}
+          </p>
         </div>
-        <div className="admin-page-actions">
-          <button className="admin-btn admin-btn-primary" onClick={() => setPicker(true)}>
-            + Yangi tahlil
-          </button>
-        </div>
+        {!readOnly && (
+          <div className="admin-page-actions">
+            <button className="admin-btn admin-btn-primary" onClick={() => setPicker(true)}>
+              + Yangi tahlil
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="admin-stat-grid">
