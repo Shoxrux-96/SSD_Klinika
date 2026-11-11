@@ -86,6 +86,12 @@ function addDays(d: Date, n: number) {
   return nd;
 }
 
+function startOfDay(d: Date) {
+  const nd = new Date(d);
+  nd.setHours(0, 0, 0, 0);
+  return nd;
+}
+
 function sameMonth(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
 }
@@ -103,8 +109,21 @@ export function AdminAppointments() {
   }, [employees, assignments]);
   const [view, setView] = useState<ViewMode>('calendar');
   const [range, setRange] = useState<CalendarRange>('day');
-  const [cursor, setCursor] = useState<Date>(new Date('2026-10-31'));
+  const [cursor, setCursor] = useState<Date>(() => startOfDay(new Date()));
   const [doctorFilter, setDoctorFilter] = useState<string>('all');
+  // Kun almashsa (yarim tunda), avtomatik ravishda yangi kunga o'tamiz — faqat foydalanuvchi
+  // ko'rib turgan sana hali ham bugungi kunning oldingi versiyasi bo'lsa.
+  const todayRef = useRef(startOfDay(new Date()).getTime());
+  useEffect(() => {
+    const t = setInterval(() => {
+      const today = startOfDay(new Date());
+      if (today.getTime() !== todayRef.current) {
+        setCursor((cur) => (cur.getTime() === todayRef.current ? today : cur));
+        todayRef.current = today.getTime();
+      }
+    }, 60000);
+    return () => clearInterval(t);
+  }, []);
   const [modalOpen, setModalOpen] = useState(false);
   const [prefill, setPrefill] = useState<{ date?: string; time?: string; doctor?: string }>({});
 
@@ -191,7 +210,7 @@ export function AdminAppointments() {
           </button>
         </div>
 
-        <button className="admin-btn admin-btn-ghost appt-today" onClick={() => setCursor(new Date('2026-10-31'))}>
+        <button className="admin-btn admin-btn-ghost appt-today" onClick={() => setCursor(startOfDay(new Date()))}>
           Bugun
         </button>
 
@@ -554,7 +573,7 @@ function MonthView({
   const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
   const gridStart = startOfWeek(first);
   const cells = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
-  const today = toISO(new Date('2026-10-31'));
+  const today = toISO(new Date());
 
   return (
     <section className="admin-card appt-month">
