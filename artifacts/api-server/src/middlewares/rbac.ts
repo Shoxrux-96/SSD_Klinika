@@ -1,4 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
+import { randomUUID } from "node:crypto";
+import { db, auditLogsTable } from "@workspace/db";
 
 // Rol asosida ruxsat berish (Role-Based Access Control).
 // Har bir route uchun "qaysi rollar qaysi usullarda qila oladi" jadvali.
@@ -19,80 +21,88 @@ type Rule = {
   roles: Role[];
 };
 
-// Faqat admin
-const ADMIN = ["admin"] as const;
+// --- Rol guruhlari (nomlangan) ---
+// Har bir guruh ma'noga ega — RBAC qoidalari oson o'qiladi va mos ravishda tozalanadi.
+const ADMIN_ONLY: Role[] = ["admin"];
+const ALL_STAFF: Role[] = ["admin", "shifokor", "laborant", "registrator", "kassir", "buxgalter"];
+const CLINIC_STAFF: Role[] = ["admin", "shifokor", "laborant"];            // tibbiy jamoa
+const FRONT_DESK: Role[] = ["admin", "registrator"];                       // qabulxona
+const FINANCE: Role[] = ["admin", "kassir", "buxgalter"];                  // moliya
+const DOCTOR_WRITE: Role[] = ["admin", "shifokor"];                        // davolash yozish
+const LAB_WRITE: Role[] = ["admin", "laborant"];                           // lab natija yozish
+const REGISTRAR_PLUS_DOCTOR: Role[] = ["admin", "registrator", "shifokor"]; // qabul boshqarish
 
 const RULES: Rule[] = [
-  // --- Tizim boshqaruvi ---
-  { path: "/users",       roles: [...ADMIN] },
-  { path: "/api-keys",    roles: [...ADMIN] },
-  { path: "/roles",       roles: [...ADMIN] },
-  { path: "/audit-logs",  roles: [...ADMIN] },
-  // Settings: o'qish — login qilgan hamma (klinika brending/promokod UI'da kerak).
-  // Yozish — faqat admin.
-  { path: "/settings", methods: ["GET"], roles: ["admin", "shifokor", "laborant", "registrator", "kassir", "buxgalter"] },
-  { path: "/settings", methods: ["PUT", "PATCH", "DELETE", "POST"], roles: [...ADMIN] },
+  // --- Tizim boshqaruvi (faqat admin) ---
+  { path: "/users",       roles: ADMIN_ONLY },
+  { path: "/api-keys",    roles: ADMIN_ONLY },
+  { path: "/roles",       roles: ADMIN_ONLY },
+  { path: "/audit-logs",  roles: ADMIN_ONLY },
+  { path: "/settings", methods: ["GET"], roles: ALL_STAFF },
+  { path: "/settings", methods: ["PUT", "PATCH", "DELETE", "POST"], roles: ADMIN_ONLY },
 
   // --- Hodimlar ---
-  { path: "/employees", methods: ["GET"], roles: ["admin", "shifokor", "laborant", "registrator", "kassir", "buxgalter"] },
-  { path: "/employees", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: [...ADMIN] },
+  { path: "/employees", methods: ["GET"], roles: ALL_STAFF },
+  { path: "/employees", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: ADMIN_ONLY },
 
-  // --- Bemorlar — hamma rol o'qiydi, admin/registrator/shifokor yozadi ---
-  { path: "/patients", methods: ["GET"], roles: ["admin", "shifokor", "laborant", "registrator", "kassir", "buxgalter"] },
-  { path: "/patients", methods: ["POST", "PUT", "PATCH"], roles: ["admin", "registrator", "shifokor"] },
-  { path: "/patients", methods: ["DELETE"], roles: [...ADMIN] },
+  // --- Bemorlar (hamma o'qiydi; registrator/shifokor yozadi; faqat admin o'chiradi) ---
+  { path: "/patients", methods: ["GET"], roles: ALL_STAFF },
+  { path: "/patients", methods: ["POST", "PUT", "PATCH"], roles: REGISTRAR_PLUS_DOCTOR },
+  { path: "/patients", methods: ["DELETE"], roles: ADMIN_ONLY },
 
   // --- Qabul va navbat ---
-  { path: "/appointments", methods: ["GET"], roles: ["admin", "shifokor", "laborant", "registrator", "kassir", "buxgalter"] },
-  { path: "/appointments", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: ["admin", "registrator", "shifokor"] },
-  { path: "/queue",        methods: ["GET"], roles: ["admin", "shifokor", "laborant", "registrator", "kassir", "buxgalter"] },
-  { path: "/queue",        methods: ["POST", "PUT", "PATCH", "DELETE"], roles: ["admin", "registrator", "shifokor"] },
+  { path: "/appointments", methods: ["GET"], roles: ALL_STAFF },
+  { path: "/appointments", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: REGISTRAR_PLUS_DOCTOR },
+  { path: "/queue",        methods: ["GET"], roles: ALL_STAFF },
+  { path: "/queue",        methods: ["POST", "PUT", "PATCH", "DELETE"], roles: REGISTRAR_PLUS_DOCTOR },
 
-  // --- Xizmatlar katalogi ---
-  { path: "/services",          methods: ["GET"], roles: ["admin", "shifokor", "laborant", "registrator", "kassir", "buxgalter"] },
-  { path: "/services",          methods: ["POST", "PUT", "PATCH", "DELETE"], roles: [...ADMIN] },
-  { path: "/service-categories", methods: ["GET"], roles: ["admin", "shifokor", "laborant", "registrator", "kassir", "buxgalter"] },
-  { path: "/service-categories", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: [...ADMIN] },
-  { path: "/assignments",       methods: ["GET"], roles: ["admin", "shifokor", "laborant", "registrator", "kassir"] },
-  { path: "/assignments",       methods: ["POST", "PUT", "PATCH", "DELETE"], roles: [...ADMIN] },
+  // --- Xizmatlar katalogi (hamma o'qiydi; faqat admin yozadi) ---
+  { path: "/services",          methods: ["GET"], roles: ALL_STAFF },
+  { path: "/services",          methods: ["POST", "PUT", "PATCH", "DELETE"], roles: ADMIN_ONLY },
+  { path: "/service-categories", methods: ["GET"], roles: ALL_STAFF },
+  { path: "/service-categories", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: ADMIN_ONLY },
+  { path: "/assignments",       methods: ["GET"], roles: ALL_STAFF },
+  { path: "/assignments",       methods: ["POST", "PUT", "PATCH", "DELETE"], roles: ADMIN_ONLY },
 
-  // --- Klinik yozuvlar ---
-  { path: "/treatments", methods: ["GET"], roles: ["admin", "shifokor", "laborant", "registrator", "kassir", "buxgalter"] },
-  { path: "/treatments", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: ["admin", "shifokor"] },
+  // --- Klinik yozuvlar (ko'rish — hamma, yozish — shifokor/laborant alohida) ---
+  { path: "/treatments", methods: ["GET"], roles: ALL_STAFF },
+  { path: "/treatments", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: DOCTOR_WRITE },
 
-  { path: "/prescriptions", methods: ["GET"], roles: ["admin", "shifokor", "laborant", "registrator", "kassir", "buxgalter"] },
-  { path: "/prescriptions", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: ["admin", "shifokor"] },
+  { path: "/prescriptions", methods: ["GET"], roles: ALL_STAFF },
+  { path: "/prescriptions", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: DOCTOR_WRITE },
 
-  // Laboratoriya natijalari — shifokor faqat ko'radi, YOZISH faqat laborant (+admin)
-  { path: "/lab-results", methods: ["GET"], roles: ["admin", "shifokor", "laborant", "registrator", "kassir", "buxgalter"] },
-  { path: "/lab-results", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: ["admin", "laborant"] },
+  // Laboratoriya — ko'rish hamma, yozish faqat laborant (shifokor faqat ko'radi)
+  { path: "/lab-results", methods: ["GET"], roles: ALL_STAFF },
+  { path: "/lab-results", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: LAB_WRITE },
 
-  { path: "/dental-records", methods: ["GET"], roles: ["admin", "shifokor", "laborant", "registrator", "kassir"] },
-  { path: "/dental-records", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: ["admin", "shifokor"] },
+  // Tish xaritasi — ko'rish hamma, yozish shifokor
+  { path: "/dental-records", methods: ["GET"], roles: ALL_STAFF },
+  { path: "/dental-records", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: DOCTOR_WRITE },
 
-  // --- Moliya ---
-  { path: "/transactions", methods: ["GET"], roles: ["admin", "kassir", "buxgalter"] },
-  { path: "/transactions", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: ["admin", "kassir", "buxgalter"] },
-  { path: "/payrolls",     methods: ["GET"], roles: ["admin", "kassir", "buxgalter"] },
-  { path: "/payrolls",     methods: ["POST", "PUT", "PATCH", "DELETE"], roles: ["admin", "buxgalter"] },
-  { path: "/finance",      roles: ["admin", "kassir", "buxgalter"] },
-  { path: "/debts",        roles: ["admin", "kassir", "buxgalter", "registrator"] },
+  // --- Moliya (kassir va buxgalter — bir xil to'liq huquqlar) ---
+  { path: "/transactions", roles: FINANCE },
+  { path: "/payrolls",     roles: FINANCE },
+  { path: "/finance",      roles: FINANCE },
+  { path: "/debts",        methods: ["GET"], roles: [...FINANCE, "registrator"] },
+  { path: "/debts",        methods: ["POST", "PUT", "PATCH", "DELETE"], roles: FINANCE },
 
   // --- Hisobotlar ---
-  { path: "/reports", methods: ["GET"], roles: ["admin", "kassir", "buxgalter"] },
+  { path: "/reports", methods: ["GET"], roles: [...FINANCE, "shifokor"] },
 
-  // --- Call markaz ---
+  // --- Call markaz (registrator yozadi, shifokor ko'radi) ---
   { path: "/call-tasks", methods: ["GET"], roles: ["admin", "registrator", "shifokor"] },
-  { path: "/call-tasks", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: ["admin", "registrator"] },
+  { path: "/call-tasks", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: FRONT_DESK },
   { path: "/call-logs",  methods: ["GET"], roles: ["admin", "registrator", "shifokor"] },
-  { path: "/call-logs",  methods: ["POST", "PUT", "PATCH", "DELETE"], roles: ["admin", "registrator"] },
+  { path: "/call-logs",  methods: ["POST", "PUT", "PATCH", "DELETE"], roles: FRONT_DESK },
 
-  // --- Inventar / davomat ---
+  // --- Inventar (texnik mahsulotlar va buyurtmalar) ---
   { path: "/tech-products", methods: ["GET"], roles: ["admin", "shifokor", "kassir", "buxgalter"] },
-  { path: "/tech-products", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: [...ADMIN] },
+  { path: "/tech-products", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: ADMIN_ONLY },
   { path: "/tech-orders",   methods: ["GET"], roles: ["admin", "shifokor", "kassir", "buxgalter"] },
-  { path: "/tech-orders",   methods: ["POST", "PUT", "PATCH", "DELETE"], roles: ["admin", "shifokor"] },
-  { path: "/attendance",    roles: ["admin", "shifokor", "laborant", "registrator", "kassir", "buxgalter"] },
+  { path: "/tech-orders",   methods: ["POST", "PUT", "PATCH", "DELETE"], roles: DOCTOR_WRITE },
+
+  // --- Davomat (har hodim o'z davomatini ko'rishi/belgilashi) ---
+  { path: "/attendance", roles: ALL_STAFF },
 ];
 
 // Autentifikatsiya talab qilinmaydigan path'lar (auth.ts'da batafsil belgilangan).
@@ -144,15 +154,29 @@ export function rbac(req: Request, res: Response, next: NextFunction) {
   if (role === "admin") return next();
 
   const rule = findRule(req.path, req.method);
-  if (!rule) {
-    // Qoida yozilmagan endpoint — xavfsizlikning birinchi tamoyili: deny by default.
-    // Admin bo'lmaganlar uchun to'sib qo'yamiz.
-    return res.status(403).json({ error: "Ushbu amalga ruxsat yo'q" });
-  }
+  const denied = !rule || !rule.roles.includes(role);
 
-  if (!rule.roles.includes(role)) {
+  if (denied) {
+    // Audit log — kim, qayerga, qaysi usul bilan urindi (block qilindi)
+    logDeny(req, authUser as any).catch(() => {});
     return res.status(403).json({ error: "Ushbu amalga ruxsat yo'q" });
   }
 
   next();
+}
+
+// Ruxsatsiz urinishni audit'ga yozish (asinxron, best-effort)
+async function logDeny(req: Request, authUser: { sub?: string; role?: string }) {
+  try {
+    await db.insert(auditLogsTable).values({
+      id: randomUUID(),
+      actor: authUser.sub ?? null,
+      action: "access:denied",
+      entity: "endpoint",
+      entityId: `${req.method} ${req.path}`,
+      before: null,
+      after: { role: authUser.role, ip: req.ip ?? null, ua: req.header("user-agent") ?? null },
+      at: Date.now(),
+    });
+  } catch { /* swallow */ }
 }

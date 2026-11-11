@@ -626,7 +626,7 @@ export function AdminLaboratory() {
                   <td><span className={`admin-chip ${statusChip[t.status]}`}>{statusLabel[t.status]}</span></td>
                   <td>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      {canEdit && (
+                      {canEdit && !readOnly && (
                         <button
                           className="admin-btn admin-btn-primary"
                           style={{ padding: '4px 8px', fontSize: 12 }}
@@ -640,18 +640,28 @@ export function AdminLaboratory() {
                           onClick={() => setViewing(t)}
                         ><Eye size={12} style={{ marginRight: 4 }} />Koʻrish</button>
                       )}
-                      {(t.status === 'kutilmoqda' || t.status === 'jarayonda') && (
+                      {/* Shifokor uchun — hamma tahlilni ko'rish mumkin (Status: kutilmoqda/jarayonda bo'lsa ham) */}
+                      {readOnly && t.status !== 'tayyor' && (
+                        <button
+                          className="admin-btn admin-btn-ghost"
+                          style={{ padding: '4px 8px', fontSize: 12 }}
+                          onClick={() => setViewing(t)}
+                        ><Eye size={12} style={{ marginRight: 4 }} />Koʻrish</button>
+                      )}
+                      {(t.status === 'kutilmoqda' || t.status === 'jarayonda') && !readOnly && (
                         <button
                           className="admin-icon-btn"
                           title="Bekor qilish"
                           onClick={() => updateTestStatus(t.id, 'bekor')}
                         ><XCircle size={14} /></button>
                       )}
-                      <button
-                        className="admin-icon-btn danger"
-                        title="Oʻchirish"
-                        onClick={() => { if (confirm('Oʻchirilsinmi?')) removeTest(t.id); }}
-                      ><Trash2 size={14} /></button>
+                      {!readOnly && (
+                        <button
+                          className="admin-icon-btn danger"
+                          title="Oʻchirish"
+                          onClick={() => { if (confirm('Oʻchirilsinmi?')) removeTest(t.id); }}
+                        ><Trash2 size={14} /></button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -697,7 +707,7 @@ export function AdminLaboratory() {
       )}
 
       {viewing && (
-        <DocViewerModal
+        <DocViewerModal readOnly={readOnly}
           test={viewing}
           onClose={() => setViewing(null)}
           onEdit={() => { setEditing(viewing); setViewing(null); }}
@@ -1160,8 +1170,8 @@ function DocEditorModal({
 
 /* ---------- Document viewer (read-only) ---------- */
 function DocViewerModal({
-  test, onClose, onEdit,
-}: { test: LabTest; onClose: () => void; onEdit: () => void }) {
+  test, onClose, onEdit, readOnly,
+}: { test: LabTest; onClose: () => void; onEdit: () => void; readOnly?: boolean }) {
   const tpl = findTpl(test.templateId);
   const print = () => {
     document.body.classList.add('is-printing');
@@ -1181,7 +1191,7 @@ function DocViewerModal({
             <button className="admin-btn admin-btn-primary" onClick={print}>
               <Printer size={14} style={{ marginRight: 6 }} />PDF chop etish
             </button>
-            <button className="admin-btn admin-btn-ghost" onClick={onEdit}>Tahrirlash</button>
+            {!readOnly && <button className="admin-btn admin-btn-ghost" onClick={onEdit}>Tahrirlash</button>}
             <button className="admin-icon-btn" onClick={onClose} aria-label="Yopish"><X size={16} /></button>
           </div>
         </div>
