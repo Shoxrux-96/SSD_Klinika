@@ -92,9 +92,11 @@ export function AdminAppointments() {
   const employees = useEmployees();
   const assignments = useAssignments();
   const doctorList = useMemo(() => {
-    const assigned = new Set(assignments.map((a) => a.employeeId));
+    // Barcha faol tibbiy xodimlar ko'rsatiladi — hatto xizmat biriktirilmagan
+    // bo'lsa ham. Shunda admin yangi shifokor qo'shsa, u darhol ro'yxatda paydo bo'ladi.
+    void assignments;
     return employees
-      .filter((e) => !e.archived && e.category === 'medical' && assigned.has(e.id))
+      .filter((e) => !e.archived && e.category === 'medical')
       .sort((a, b) => a.fullName.localeCompare(b.fullName, 'uz'))
       .map((e) => e.fullName);
   }, [employees, assignments]);
@@ -640,11 +642,9 @@ function AppointmentModal({
   const assignments = useAssignments();
 
   const doctorEmployees = useMemo(() => {
-    const assigned = new Set(assignments.map((a) => a.employeeId));
-    return employees.filter(
-      (e) => !e.archived && e.category === 'medical' && assigned.has(e.id),
-    );
-  }, [employees, assignments]);
+    // Barcha faol tibbiy xodimlar (xizmat biriktirilmaganlar ham ko'rsatiladi)
+    return employees.filter((e) => !e.archived && e.category === 'medical');
+  }, [employees]);
   const activeServices = useMemo(() => services.filter((s) => !s.archived), [services]);
 
   const doctorNames = useMemo(
@@ -664,7 +664,9 @@ function AppointmentModal({
       assignments.filter((a) => a.employeeId === emp.id).map((a) => a.serviceId),
     );
     const list = activeServices.filter((s) => ids.has(s.id));
-    return list.length ? list : [];
+    // Xizmat biriktirilmagan bo'lsa — barcha faol xizmatlardan tanlash mumkin
+    // (admin keyin biriktirsa ham bo'ladi). Shunda shifokor bloklanmaydi.
+    return list.length ? list : activeServices;
   }, [doctor, doctorEmployees, assignments, activeServices]);
 
   const [service, setService] = useState<string>(
