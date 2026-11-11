@@ -395,7 +395,7 @@ export function AdminCashier() {
         <div className="cash-tabs">
           <button className={`cash-tab ${tab === 'tolanmagan' ? 'is-active' : ''}`} onClick={() => setTab('tolanmagan')}>
             To‘lanmagan
-            {debts.count > 0 && <span className="cash-tab-badge">{debts.count}</span>}
+            {unpaidTab.length > 0 && <span className="cash-tab-badge">{unpaidTab.length}</span>}
           </button>
           <button className={`cash-tab ${tab === 'tarix' ? 'is-active' : ''}`} onClick={() => setTab('tarix')}>
             To‘lovlar tarixi
