@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import {
   BookOpen, Phone, Calendar, Wallet, X, Banknote, CreditCard, ArrowRightLeft,
-  Check, CheckCircle2, Clock, Search, Receipt, Trash2, AlertCircle,
+  Check, CheckCircle2, Clock, Search, Receipt, Trash2, AlertCircle, DollarSign,
 } from 'lucide-react';
 import { useDebts, removeDebt, type DebtRecord } from '../debtsStore';
 import { useTreatments } from '../clinicalData';
@@ -211,20 +211,20 @@ export function AdminDebts({ embedded = false }: { embedded?: boolean } = {}) {
                     <td className="t-right">
                       <div className="debt-actions">
                         <button
-                          className="admin-btn admin-btn-ghost sm"
+                          className="debt-act-btn debt-act-history"
                           title="Toʻlov tarixi"
                           onClick={() => setHistoryRow(d)}
                         >
-                          <Receipt size={12} />
+                          <DollarSign size={14} />
                         </button>
                         <button
-                          className="admin-btn admin-btn-primary sm"
+                          className="debt-act-btn debt-act-pay"
                           onClick={() => setPayRow(d)}
                         >
-                          <Wallet size={12} /> Toʻlov
+                          <Wallet size={13} /> Toʻlov
                         </button>
                         <button
-                          className="admin-btn admin-btn-ghost sm"
+                          className="debt-act-btn debt-act-del"
                           title="Qarz daftaridan oʻchirish"
                           onClick={() => {
                             if (confirm(`"${d.patient}" uchun qarz yozuvi oʻchirilsinmi? (Toʻlov tarixi saqlanadi)`)) {
@@ -232,7 +232,7 @@ export function AdminDebts({ embedded = false }: { embedded?: boolean } = {}) {
                             }
                           }}
                         >
-                          <Trash2 size={12} />
+                          <Trash2 size={13} />
                         </button>
                       </div>
                     </td>
@@ -295,9 +295,57 @@ export function AdminDebts({ embedded = false }: { embedded?: boolean } = {}) {
           onClose={() => setHistoryRow(null)}
         />
       )}
+
+      <style>{debtActionStyles}</style>
     </div>
   );
 }
+
+const debtActionStyles = `
+.debt-actions { display: inline-flex; gap: 6px; align-items: center; }
+.debt-act-btn {
+  appearance: none; cursor: pointer; font: inherit;
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-size: 12.5px; font-weight: 600;
+  border: 1px solid transparent;
+  transition: all .12s;
+}
+.debt-act-btn:hover { transform: translateY(-1px); }
+.debt-act-btn:active { transform: translateY(0); }
+
+.debt-act-history {
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  color: #047857;
+  border-color: #a7f3d0;
+}
+.debt-act-history:hover {
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+  box-shadow: 0 6px 14px -4px rgba(5, 150, 105, 0.35);
+}
+
+.debt-act-pay {
+  background: linear-gradient(135deg, #2563eb, #4f46e5);
+  color: #fff;
+  box-shadow: 0 6px 14px -4px rgba(37, 99, 235, 0.4);
+}
+.debt-act-pay:hover {
+  box-shadow: 0 10px 20px -6px rgba(37, 99, 235, 0.55);
+  filter: brightness(1.05);
+}
+
+.debt-act-del {
+  background: #fff;
+  color: #64748b;
+  border-color: #e4e9f1;
+}
+.debt-act-del:hover {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+`;
 
 /* ------- To'lov modali ------- */
 function DebtPaymentModal({
