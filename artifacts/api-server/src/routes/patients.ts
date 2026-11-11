@@ -30,18 +30,25 @@ function validateJshshir(v: unknown): { ok: true; value: string } | { ok: false;
 
 router.post("/patients", async (req, res) => {
   const b = req.body ?? {};
-  if (!b.fullName) return res.status(400).json({ error: "fullName required" });
+  const name = String(b.fullName ?? "").trim();
+  const phone = String(b.phone ?? "").trim();
+  const gender = b.gender ? String(b.gender).trim() : "";
+  const birthDate = b.birthDate ? String(b.birthDate).trim() : "";
+  if (!name) return res.status(400).json({ error: "To'liq ism majburiy" });
+  if (!phone || phone === "+998") return res.status(400).json({ error: "Telefon raqami majburiy" });
+  if (gender !== "erkak" && gender !== "ayol") return res.status(400).json({ error: "Jinsini tanlang" });
+  if (!birthDate) return res.status(400).json({ error: "Tug'ilgan sana majburiy" });
   const jv = validateJshshir(b.jshshir);
   if (!jv.ok) return res.status(400).json({ error: jv.error });
   const row = {
     id: b.id ?? randomUUID(),
-    fullName: String(b.fullName),
-    phone: b.phone ?? "",
+    fullName: name,
+    phone,
     address: b.address ?? "",
     region: b.region ?? null,
     district: b.district ?? null,
-    gender: b.gender ?? null,
-    birthDate: b.birthDate ?? null,
+    gender,
+    birthDate,
     jshshir: jv.value,
     addedAt: b.addedAt ?? Date.now(),
     archived: Boolean(b.archived),
@@ -62,6 +69,26 @@ async function updatePatient(req: any, res: any) {
   delete patch.id;
   delete patch.addedAt;
   if (Object.keys(patch).length === 0) return res.status(400).json({ error: "No fields" });
+  if (patch.fullName !== undefined) {
+    const name = String(patch.fullName).trim();
+    if (!name) return res.status(400).json({ error: "To'liq ism majburiy" });
+    patch.fullName = name;
+  }
+  if (patch.phone !== undefined) {
+    const phone = String(patch.phone).trim();
+    if (!phone || phone === "+998") return res.status(400).json({ error: "Telefon raqami majburiy" });
+    patch.phone = phone;
+  }
+  if (patch.gender !== undefined) {
+    const g = String(patch.gender ?? "").trim();
+    if (g !== "erkak" && g !== "ayol") return res.status(400).json({ error: "Jinsini tanlang" });
+    patch.gender = g;
+  }
+  if (patch.birthDate !== undefined) {
+    const bd = String(patch.birthDate ?? "").trim();
+    if (!bd) return res.status(400).json({ error: "Tug'ilgan sana majburiy" });
+    patch.birthDate = bd;
+  }
   if (patch.jshshir !== undefined) {
     const jv = validateJshshir(patch.jshshir);
     if (!jv.ok) return res.status(400).json({ error: jv.error });

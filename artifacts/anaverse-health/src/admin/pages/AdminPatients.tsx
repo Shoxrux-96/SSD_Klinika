@@ -305,9 +305,15 @@ function PatientAddModal({ onClose, onSave, existingJshshirs }: { onClose: () =>
 
   const normalizeJshshir = (v: string) => v.replace(/\D/g, '').slice(0, 14);
 
+  const [formErr, setFormErr] = useState('');
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName.trim()) return;
+    setFormErr('');
+    if (!fullName.trim()) { setFormErr("To'liq ism majburiy."); return; }
+    if (!phone.trim() || phone.trim() === '+998') { setFormErr("Telefon raqami majburiy."); return; }
+    if (!gender) { setFormErr("Jinsini tanlang."); return; }
+    if (!birthDate) { setFormErr("Tug'ilgan sana majburiy."); return; }
     const p = normalizeJshshir(jshshir);
     if (!p || p.length !== 14) {
       setJshshirErr("JSHSHIR to'liq 14 raqamdan iborat bo'lishi kerak.");
@@ -323,11 +329,18 @@ function PatientAddModal({ onClose, onSave, existingJshshirs }: { onClose: () =>
       address: address.trim(),
       region: region || undefined,
       district: district || undefined,
-      gender: gender || undefined,
-      birthDate: birthDate || undefined,
+      gender,
+      birthDate,
       jshshir: p,
     });
   };
+
+  const allFilled =
+    !!fullName.trim() &&
+    phone.trim().length > 4 &&
+    !!gender &&
+    !!birthDate &&
+    normalizeJshshir(jshshir).length === 14;
 
   return (
     <div className="appt-modal-backdrop" onClick={onClose}>
@@ -340,17 +353,17 @@ function PatientAddModal({ onClose, onSave, existingJshshirs }: { onClose: () =>
         </div>
         <div className="appt-modal-body">
           <label>
-            <span>To‘liq ism</span>
+            <span>To‘liq ism <span style={{ color: '#dc2626' }}>*</span></span>
             <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Ism Familiya" autoFocus required />
           </label>
           <div className="appt-modal-row">
             <label>
-              <span>Telefon raqami</span>
-              <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+998 90 123 45 67" />
+              <span>Telefon raqami <span style={{ color: '#dc2626' }}>*</span></span>
+              <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+998 90 123 45 67" required />
             </label>
             <label>
-              <span>Jinsi</span>
-              <select value={gender} onChange={(e) => setGender(e.target.value as Gender | '')}>
+              <span>Jinsi <span style={{ color: '#dc2626' }}>*</span></span>
+              <select value={gender} onChange={(e) => setGender(e.target.value as Gender | '')} required>
                 <option value="">Tanlang</option>
                 <option value="erkak">Erkak</option>
                 <option value="ayol">Ayol</option>
@@ -358,13 +371,14 @@ function PatientAddModal({ onClose, onSave, existingJshshirs }: { onClose: () =>
             </label>
           </div>
           <label>
-            <span>Tugʻilgan sana</span>
+            <span>Tugʻilgan sana <span style={{ color: '#dc2626' }}>*</span></span>
             <input
               type="date"
               value={birthDate}
               onChange={(e) => setBirthDate(e.target.value)}
               placeholder="YYYY-MM-DD"
               max={new Date().toISOString().slice(0, 10)}
+              required
             />
           </label>
           <label>
@@ -403,9 +417,21 @@ function PatientAddModal({ onClose, onSave, existingJshshirs }: { onClose: () =>
             <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Mahalla, ko‘cha, uy raqami..." />
           </label>
         </div>
+        {formErr && (
+          <div style={{ padding: '0 20px', color: '#dc2626', fontSize: 13, marginBottom: 8 }}>
+            {formErr}
+          </div>
+        )}
         <div className="appt-modal-foot">
           <button type="button" className="admin-btn admin-btn-ghost" onClick={onClose}>Bekor qilish</button>
-          <button type="submit" className="admin-btn admin-btn-primary"><Plus size={15} /> Qo‘shish</button>
+          <button
+            type="submit"
+            className="admin-btn admin-btn-primary"
+            disabled={!allFilled}
+            title={!allFilled ? "Barcha majburiy maydonlarni to'ldiring" : undefined}
+          >
+            <Plus size={15} /> Qo‘shish
+          </button>
         </div>
       </form>
     </div>
@@ -433,15 +459,26 @@ function PatientProfileModal({
   const districts = UZ_REGIONS.find((r) => r.name === region)?.districts ?? [];
   const normalizeJshshir = (v: string) => v.replace(/\D/g, '').slice(0, 14);
   const [jshshirErr, setJshshirErr] = useState('');
+  const [formErr, setFormErr] = useState('');
 
   const initials = (fullName || patient.fullName).split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
   const age = birthDate ? calcAge(birthDate) : null;
   const genderLabel = gender ? (gender === 'erkak' ? 'Erkak' : 'Ayol') : '—';
   const fullAddress = [region, district, address].filter(Boolean).join(', ') || '—';
+  const allFilled =
+    !!fullName.trim() &&
+    phone.trim().length > 4 &&
+    !!gender &&
+    !!birthDate &&
+    normalizeJshshir(jshshir).length === 14;
 
   const submit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!fullName.trim()) return;
+    setFormErr('');
+    if (!fullName.trim()) { setFormErr("To'liq ism majburiy."); return; }
+    if (!phone.trim() || phone.trim() === '+998') { setFormErr("Telefon raqami majburiy."); return; }
+    if (!gender) { setFormErr("Jinsini tanlang."); return; }
+    if (!birthDate) { setFormErr("Tug'ilgan sana majburiy."); return; }
     const p = normalizeJshshir(jshshir);
     if (!p || p.length !== 14) {
       setJshshirErr("JSHSHIR to'liq 14 raqamdan iborat bo'lishi kerak.");
@@ -453,8 +490,8 @@ function PatientProfileModal({
       address: address.trim(),
       region: region || undefined,
       district: district || undefined,
-      gender: gender || undefined,
-      birthDate: birthDate || undefined,
+      gender,
+      birthDate,
       jshshir: p,
     });
   };
@@ -525,11 +562,12 @@ function PatientProfileModal({
               />
               <Field
                 icon={<UserCircle2 size={16} />}
-                label="Jinsi"
+                label="Jinsi *"
                 editable={isEdit}
                 value={gender}
                 onChange={(v) => setGender(v as Gender | '')}
                 display={genderLabel}
+                required
                 select={[
                   { value: '', label: 'Tanlang' },
                   { value: 'erkak', label: 'Erkak' },
@@ -538,13 +576,14 @@ function PatientProfileModal({
               />
               <Field
                 icon={<Calendar size={16} />}
-                label="Tugʻilgan sana"
+                label="Tugʻilgan sana *"
                 editable={isEdit}
                 value={birthDate}
                 onChange={setBirthDate}
                 display={birthDate || '—'}
                 type="date"
                 max={new Date().toISOString().slice(0, 10)}
+                required
                 hint={age !== null ? `${age} yosh` : undefined}
               />
               <Field
@@ -564,12 +603,13 @@ function PatientProfileModal({
               />
               <Field
                 icon={<Phone size={16} />}
-                label="Telefon raqami"
+                label="Telefon raqami *"
                 editable={isEdit}
                 value={phone}
                 onChange={setPhone}
                 display={phone || '—'}
                 placeholder="+998 90 ..."
+                required
                 href={!isEdit && phone ? `tel:${phone.replace(/\s/g, '')}` : undefined}
               />
               <Field
@@ -612,6 +652,11 @@ function PatientProfileModal({
           </div>
         </div>
 
+        {isEdit && formErr && (
+          <div style={{ padding: '0 20px', color: '#dc2626', fontSize: 13, marginBottom: 6 }}>
+            {formErr}
+          </div>
+        )}
         <div className="appt-modal-foot patient-view-foot">
           <button type="button" className="admin-btn admin-btn-ghost" onClick={onClose}>Yopish</button>
           {isEdit ? (
@@ -623,10 +668,15 @@ function PatientProfileModal({
                   setFullName(patient.fullName); setPhone(patient.phone); setAddress(patient.address);
                   setRegion(patient.region ?? ''); setDistrict(patient.district ?? '');
                   setGender(patient.gender ?? ''); setBirthDate(patient.birthDate ?? '');
-                  setJshshir(patient.jshshir ?? ''); setMode('view');
+                  setJshshir(patient.jshshir ?? ''); setMode('view'); setFormErr('');
                 }}
               >Bekor qilish</button>
-              <button type="submit" className="admin-btn admin-btn-brand">
+              <button
+                type="submit"
+                className="admin-btn admin-btn-brand"
+                disabled={!allFilled}
+                title={!allFilled ? "Barcha majburiy maydonlarni to'ldiring" : undefined}
+              >
                 <CheckCircle2 size={15} /> Saqlash
               </button>
             </>
