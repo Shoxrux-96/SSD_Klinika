@@ -10,6 +10,7 @@ import {
   LayoutGrid,
   Plus,
   Table as TableIcon,
+  UserX,
   X,
   XCircle,
 } from 'lucide-react';
@@ -50,13 +51,13 @@ const STATUS_LABEL: Record<Status, string> = {
   kutilmoqda: 'kutilmoqda',
   keldi: 'keldi',
   bekor: 'bekor qilindi',
-  kechikdi: 'kechikdi',
-  kelmadi: 'kechikdi', // eski yozuvlar uchun ham "kechikdi" ko'rsatiladi
+  kelmadi: 'kelmadi',
+  kechikdi: 'kelmadi', // tashqi ko'rinishda 'kelmadi'
 };
 
 function statusCls(s: Status) {
   return s === 'keldi' ? 'ok' : s === 'bekor' ? 'danger'
-    : (s === 'kechikdi' || s === 'kelmadi') ? 'missed' : 'wait';
+    : (s === 'kelmadi' || s === 'kechikdi') ? 'missed' : 'wait';
 }
 
 type ViewMode = 'calendar' | 'table';
@@ -303,10 +304,10 @@ function StatusActions({
     navigate(`${base}/queue`);
   };
 
-  const handleKechikdi = async () => {
+  const handleKelmadi = async () => {
     if (busy) return;
     setBusy(true);
-    await setAppointmentStatus(appt.id, 'kechikdi');
+    await setAppointmentStatus(appt.id, 'kelmadi');
   };
 
   const handleBekor = async () => {
@@ -332,11 +333,11 @@ function StatusActions({
         type="button"
         className="admin-icon-btn sm missed"
         disabled={busy}
-        onClick={handleKechikdi}
-        aria-label="Kechikdi"
-        title="Kechikdi — belgilangan vaqtda kelmagan"
+        onClick={handleKelmadi}
+        aria-label="Kelmadi"
+        title="Kelmadi — bemor belgilangan vaqtda kelmagan"
       >
-        <Clock size={size} />
+        <UserX size={size} />
       </button>
       <button
         type="button"
