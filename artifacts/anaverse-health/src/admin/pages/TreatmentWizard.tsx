@@ -183,13 +183,13 @@ export function TreatmentWizard({ onClose, existing, initialPatient, initialDoct
 
   function handleSave() {
     const serviceNames = selectedServices.map((s) => s.name);
-    // Bemorni ismi bo'yicha topamiz — UUID va passport kartaga biriktiriladi
+    // Bemorni ismi bo'yicha topamiz — UUID va jshshir kartaga biriktiriladi
     const selectedPatient = patients.find((p) => p.fullName === patient);
-    const normalizePassport = (v?: string) => (v ?? '').replace(/\s+/g, '').toUpperCase();
+    const normalizeJshshir = (v?: string) => (v ?? '').replace(/\s+/g, '').toUpperCase();
     const payload = {
       patient,
       patientId: selectedPatient?.id ?? existing?.patientId,
-      patientPassport: normalizePassport(selectedPatient?.passport) || existing?.patientPassport,
+      patientJshshir: normalizeJshshir(selectedPatient?.jshshir) || existing?.patientJshshir,
       diagnosis,
       service: serviceNames[0],
       services: serviceNames,

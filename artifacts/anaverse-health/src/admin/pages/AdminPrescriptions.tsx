@@ -146,7 +146,7 @@ function PrescriptionModal({
     try {
       const name = patient.trim();
       const selected = patients.find((p) => p.fullName === name);
-      const passport = (selected?.passport ?? '').replace(/\s+/g, '').toUpperCase() || existing?.patientPassport;
+      const jshshir = (selected?.jshshir ?? '').replace(/\s+/g, '').toUpperCase() || existing?.patientJshshir;
       // Dori ro'yxatini bitta satrga yig'ish: "nom | miqdor | qo'llanilishi"
       const medsStr = rows
         .filter((r) => r.name.trim())
@@ -155,7 +155,7 @@ function PrescriptionModal({
       const common = {
         patient: name,
         patientId: selected?.id ?? existing?.patientId,
-        patientPassport: passport,
+        patientJshshir: jshshir,
         doctor: doctor.trim(),
         meds: medsStr,
         date,

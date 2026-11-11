@@ -6,7 +6,7 @@ export type DebtRecord = {
   id: string;
   treatmentId: string;
   patientId?: string;
-  patientPassport?: string;
+  patientJshshir?: string;
   patient: string;
   phone?: string;
   doctor: string;
@@ -36,7 +36,7 @@ function fromApi(row: any): DebtRecord {
     id: row.id,
     treatmentId: row.treatmentId ?? '',
     patientId: row.patientId ?? undefined,
-    patientPassport: row.patientPassport ?? undefined,
+    patientJshshir: row.patientJshshir ?? undefined,
     patient: row.patient ?? '',
     phone: row.phone ?? undefined,
     doctor: row.doctor ?? '',

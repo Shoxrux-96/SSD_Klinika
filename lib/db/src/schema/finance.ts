@@ -36,7 +36,7 @@ export const debtsTable = pgTable(
     id: text("id").primaryKey(),
     treatmentId: text("treatment_id"),
     patientId: text("patient_id"),
-    patientPassport: text("patient_passport"),
+    patientJshshir: text("patient_jshshir"),
     patient: text("patient").notNull(),      // display: bemor ismi
     phone: text("phone"),
     doctor: text("doctor"),

@@ -1,6 +1,6 @@
 // Tish xaritasi (FDI nomenklaturasi — 32 tish, 4 kvadrant).
 // Har bir tishga bosilganda tanlash; o'ng tomondagi panelda holat va muolaja yoziladi.
-// Yozuvlar `dental_records` jadvaliga (API) saqlanadi — patientId (UUID) + patientPassport bilan.
+// Yozuvlar `dental_records` jadvaliga (API) saqlanadi — patientId (UUID) + patientJshshir bilan.
 
 import { useMemo, useState } from 'react';
 import { Trash2, Plus, Printer } from 'lucide-react';
@@ -33,7 +33,7 @@ const CONDITION_COLOR: Record<string, { bg: string; label: string }> = {
   protez:  { bg: '#c4b5fd', label: 'Protez' },
 };
 
-function normalizePassport(v?: string) {
+function normalizeJshshir(v?: string) {
   return (v ?? '').replace(/\s+/g, '').toUpperCase() || undefined;
 }
 
@@ -45,15 +45,15 @@ export function DentalChart({ patient }: { patient: Patient }) {
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const myPassport = normalizePassport(patient.passport);
+  const myJshshir = normalizeJshshir(patient.jshshir);
   const belongs = (r: DentalRecord) => {
     if (r.patientId === patient.id) return true;
-    if (myPassport && normalizePassport(r.patientPassport) === myPassport) return true;
+    if (myJshshir && normalizeJshshir(r.patientJshshir) === myJshshir) return true;
     return false;
   };
 
   const records = useMemo(() => all.filter(belongs).sort((a, b) => b.createdAt - a.createdAt),
-    [all, patient.id, patient.passport]);
+    [all, patient.id, patient.jshshir]);
 
   // Tishga qarab eng so'nggi holat
   const toothCurrent = useMemo(() => {
@@ -70,7 +70,7 @@ export function DentalChart({ patient }: { patient: Patient }) {
     try {
       await addDentalRecord({
         patientId: patient.id,
-        patientPassport: myPassport,
+        patientJshshir: myJshshir,
         tooth: selected,
         condition,
         procedure: procedure.trim() || undefined,

@@ -23,7 +23,7 @@ export type Treatment = {
   // Asosiy identifikator: patients.id (UUID). Eski yozuvlar uchun ism-familya bo'lishi mumkin.
   patientId?: string;
   // Qo'shimcha identifikator (xavfsizlik/legacy fallback)
-  patientPassport?: string;
+  patientJshshir?: string;
   // Ko'rsatish uchun ism (hamma UI shu yerdan oladi)
   patient: string;
   diagnosis: string;
@@ -65,7 +65,7 @@ function trFromApi(row: any): Treatment {
   return {
     id: row.id,
     patientId: row.patientId ?? undefined,
-    patientPassport: row.patientPassport ?? extra.patientPassport,
+    patientJshshir: row.patientJshshir ?? extra.patientJshshir,
     patient: extra.patientName ?? row.patientId ?? '', // ko'rsatish uchun
     doctor: row.doctorId ?? '',
     diagnosis: row.diagnosis ?? '',
@@ -79,7 +79,7 @@ function trFromApi(row: any): Treatment {
 }
 function trToApi(t: Partial<Treatment>) {
   const {
-    id, patient, patientId, patientPassport, doctor, diagnosis, service, amount, date, status, methods,
+    id, patient, patientId, patientJshshir, doctor, diagnosis, service, amount, date, status, methods,
     ...rest
   } = t as any;
   // Agar yangi yozuv UUID bilan kelgan bo'lsa, ism `notes.patientName` ga ketadi
@@ -87,7 +87,7 @@ function trToApi(t: Partial<Treatment>) {
   return {
     ...(id ? { id } : {}),
     ...(patientId !== undefined ? { patientId } : (patient !== undefined ? { patientId: patient } : {})),
-    ...(patientPassport !== undefined ? { patientPassport } : {}),
+    ...(patientJshshir !== undefined ? { patientJshshir } : {}),
     ...(doctor !== undefined ? { doctorId: doctor } : {}),
     ...(diagnosis !== undefined ? { diagnosis } : {}),
     ...(service !== undefined ? { serviceId: service || null } : {}),
@@ -169,7 +169,7 @@ async function autoDeferIfUnpaid(t: Treatment) {
     id: `D-${Date.now().toString(36).toUpperCase()}`,
     treatmentId: t.id,
     patientId: t.patientId ?? null,
-    patientPassport: t.patientPassport ?? null,
+    patientJshshir: t.patientJshshir ?? null,
     patient: t.patient,
     doctor: t.doctor,
     services: t.service ?? (t.services?.[0] ?? ''),
@@ -191,7 +191,7 @@ export async function removeTreatment(id: string) {
 export type Prescription = {
   id: string;
   patientId?: string;      // UUID (yangi yozuvlar)
-  patientPassport?: string; // qo'shimcha identifikator
+  patientJshshir?: string; // qo'shimcha identifikator
   patient: string;          // ko'rsatish uchun ism
   doctor: string;
   meds: string;
@@ -206,7 +206,7 @@ function rxFromApi(row: any): Prescription {
   return {
     id: row.id,
     patientId: row.patientId ?? undefined,
-    patientPassport: row.patientPassport ?? extra.patientPassport,
+    patientJshshir: row.patientJshshir ?? extra.patientJshshir,
     patient: extra.patientName ?? row.patientId ?? '',
     doctor: row.doctorId ?? '',
     meds,
@@ -214,11 +214,11 @@ function rxFromApi(row: any): Prescription {
   };
 }
 function rxToApi(p: Partial<Prescription>) {
-  const { id, patient, patientId, patientPassport, doctor, meds, date } = p as any;
+  const { id, patient, patientId, patientJshshir, doctor, meds, date } = p as any;
   return {
     ...(id ? { id } : {}),
     ...(patientId !== undefined ? { patientId } : (patient !== undefined ? { patientId: patient } : {})),
-    ...(patientPassport !== undefined ? { patientPassport } : {}),
+    ...(patientJshshir !== undefined ? { patientJshshir } : {}),
     ...(doctor !== undefined ? { doctorId: doctor } : {}),
     ...(date !== undefined ? { date } : {}),
     ...(meds !== undefined ? { medications: String(meds).split(/\s*,\s*/).filter(Boolean) } : {}),
@@ -275,7 +275,7 @@ export async function removePrescription(id: string) {
 export type LabTestRecord = {
   id: string;
   patientId?: string;       // UUID
-  patientPassport?: string; // qo'shimcha identifikator
+  patientJshshir?: string; // qo'shimcha identifikator
   patientName: string;      // ko'rsatish uchun
   // Davolashga bog'lanish (ixtiyoriy) — Form003 ichida ko'rsatiladi
   treatmentId?: string;
@@ -295,7 +295,7 @@ function labFromApi(row: any): LabTestRecord {
   return {
     id: row.id,
     patientId: row.patientId ?? undefined,
-    patientPassport: row.patientPassport ?? extra.patientPassport,
+    patientJshshir: row.patientJshshir ?? extra.patientJshshir,
     patientName: extra.patientName ?? row.patientId ?? '',
     treatmentId: row.treatmentId ?? extra.treatmentId ?? undefined,
     testType: row.testName,
@@ -335,7 +335,7 @@ export async function addLabTest(t: Omit<LabTestRecord, 'id' | 'createdAt'> & { 
   const body = {
     id: t.id ?? `LAB-${Date.now().toString(36).toUpperCase()}`,
     patientId: t.patientId ?? t.patientName, // UUID bo'lsa UUID, aks holda ism (legacy)
-    patientPassport: t.patientPassport,
+    patientJshshir: t.patientJshshir,
     doctorId: t.labDoctor ?? null,
     treatmentId: t.treatmentId ?? null,
     testName: t.testType,
@@ -343,7 +343,7 @@ export async function addLabTest(t: Omit<LabTestRecord, 'id' | 'createdAt'> & { 
     date: t.docDate ?? new Date().toISOString().slice(0, 10),
     result: JSON.stringify({
       patientName: t.patientName,
-      patientPassport: t.patientPassport,
+      patientJshshir: t.patientJshshir,
       treatmentId: t.treatmentId,
       readyAt: t.readyAt, results: t.results,
       laborant: t.laborant, templateId: t.templateId,
@@ -360,7 +360,7 @@ export async function updateLabTest(id: string, patch: Partial<LabTestRecord>) {
   const body: any = {};
   if (patch.patientId !== undefined) body.patientId = patch.patientId;
   else if (patch.patientName !== undefined && !merged.patientId) body.patientId = patch.patientName;
-  if (patch.patientPassport !== undefined) body.patientPassport = patch.patientPassport;
+  if (patch.patientJshshir !== undefined) body.patientJshshir = patch.patientJshshir;
   if (patch.labDoctor !== undefined) body.doctorId = patch.labDoctor;
   if (patch.treatmentId !== undefined) body.treatmentId = patch.treatmentId;
   if (patch.testType !== undefined) body.testName = patch.testType;
@@ -368,7 +368,7 @@ export async function updateLabTest(id: string, patch: Partial<LabTestRecord>) {
   if (patch.docDate !== undefined) body.date = patch.docDate;
   body.result = JSON.stringify({
     patientName: merged.patientName,
-    patientPassport: merged.patientPassport,
+    patientJshshir: merged.patientJshshir,
     treatmentId: merged.treatmentId,
     readyAt: merged.readyAt, results: merged.results,
     laborant: merged.laborant, templateId: merged.templateId,

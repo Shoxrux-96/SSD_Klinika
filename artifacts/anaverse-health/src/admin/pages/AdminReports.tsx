@@ -332,7 +332,7 @@ function PatientsReport({ patients, appts, fromMs, chartP, period }: any) {
               { header: 'F.I.Sh.', get: (p: any) => p.fullName },
               { header: 'Telefon', get: (p: any) => p.phone },
               { header: 'Jins', get: (p: any) => p.gender ?? '' },
-              { header: 'Passport', get: (p: any) => p.passport ?? '' },
+              { header: 'JSHSHIR', get: (p: any) => p.jshshir ?? '' },
               { header: 'Hudud', get: (p: any) => p.region ?? '' },
               { header: 'Tuman', get: (p: any) => p.district ?? '' },
             ])

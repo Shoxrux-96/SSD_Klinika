@@ -1,7 +1,7 @@
 import { pgTable, text, bigint, integer, boolean, jsonb, index } from "drizzle-orm/pg-core";
 
-// Barcha tibbiy yozuvlar `patientId` + `patientPassport` juftligi bilan bog'lanadi.
-// Birlamchi JOIN kaliti — `patientId` (patients.id UUID). `patientPassport` esa
+// Barcha tibbiy yozuvlar `patientId` + `patientJshshir` juftligi bilan bog'lanadi.
+// Birlamchi JOIN kaliti — `patientId` (patients.id UUID). `patientJshshir` esa
 // qo'shimcha tekshiruv va xavfsizlik uchun (ism-familya o'zgarsa ham karta qoladi).
 
 export const prescriptionsTable = pgTable(
@@ -9,7 +9,7 @@ export const prescriptionsTable = pgTable(
   {
     id: text("id").primaryKey(),
     patientId: text("patient_id").notNull(), // patients.id (UUID)
-    patientPassport: text("patient_passport"), // ikkinchi darajali identifikator
+    patientJshshir: text("patient_jshshir"), // ikkinchi darajali identifikator
     doctorId: text("doctor_id").notNull(),
     date: text("date").notNull(),
     medications: jsonb("medications").notNull().default([]),
@@ -24,7 +24,7 @@ export const treatmentsTable = pgTable(
   {
     id: text("id").primaryKey(),
     patientId: text("patient_id").notNull(), // patients.id (UUID)
-    patientPassport: text("patient_passport"),
+    patientJshshir: text("patient_jshshir"),
     doctorId: text("doctor_id").notNull(),
     serviceId: text("service_id"),
     date: text("date").notNull(),
@@ -43,7 +43,7 @@ export const labResultsTable = pgTable(
   {
     id: text("id").primaryKey(),
     patientId: text("patient_id").notNull(), // patients.id (UUID)
-    patientPassport: text("patient_passport"),
+    patientJshshir: text("patient_jshshir"),
     doctorId: text("doctor_id"),
     // Davolashga bog'lanish — Form003 ichida avtomatik ko'rinadi
     treatmentId: text("treatment_id"),
@@ -66,7 +66,7 @@ export const dentalRecordsTable = pgTable(
   {
     id: text("id").primaryKey(),
     patientId: text("patient_id").notNull(), // patients.id (UUID)
-    patientPassport: text("patient_passport"),
+    patientJshshir: text("patient_jshshir"),
     tooth: text("tooth").notNull(),
     condition: text("condition").notNull(),
     procedure: text("procedure"),

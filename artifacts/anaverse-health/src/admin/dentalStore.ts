@@ -1,4 +1,4 @@
-// Stomatologik tish xaritasi: patientId+passport ga bog'langan tish-tish yozuvlar.
+// Stomatologik tish xaritasi: patientId+jshshir ga bog'langan tish-tish yozuvlar.
 // Jadval: `dental_records` (PostgreSQL). CRUD: /api/dental-records.
 import { useEffect, useSyncExternalStore } from 'react';
 
@@ -16,7 +16,7 @@ export type ToothCondition =
 export type DentalRecord = {
   id: string;
   patientId: string;        // UUID (asosiy)
-  patientPassport?: string; // qo'shimcha identifikator
+  patientJshshir?: string; // qo'shimcha identifikator
   tooth: string;            // FDI yoki qisqa ko'rinish: "18", "11", "48" (kattalar) yoki "51" bolalar
   condition: ToothCondition | string;
   procedure?: string;
@@ -40,7 +40,7 @@ function fromApi(row: any): DentalRecord {
   return {
     id: row.id,
     patientId: row.patientId ?? '',
-    patientPassport: row.patientPassport ?? undefined,
+    patientJshshir: row.patientJshshir ?? undefined,
     tooth: String(row.tooth ?? ''),
     condition: row.condition,
     procedure: row.procedure ?? undefined,
@@ -75,7 +75,7 @@ export async function addDentalRecord(r: Omit<DentalRecord, 'id' | 'createdAt'>)
   const body = {
     id: `D-${Date.now().toString(36).toUpperCase()}`,
     patientId: r.patientId,
-    patientPassport: r.patientPassport,
+    patientJshshir: r.patientJshshir,
     tooth: r.tooth,
     condition: r.condition,
     procedure: r.procedure ?? null,

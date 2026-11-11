@@ -38,7 +38,7 @@ export type Patient = {
   district?: string;
   gender?: Gender;
   birthDate?: string;
-  passport?: string;
+  jshshir?: string;
   addedAt: number;
   archived: boolean;
 };
@@ -277,7 +277,7 @@ async function ensureDraftTreatmentForAppointment(a: Appointment) {
   const payload = {
     id: `T-${Date.now().toString(36).toUpperCase()}`,
     patientId: a.patientId ?? patient?.id ?? a.patient,
-    patientPassport: patient?.passport,
+    patientJshshir: patient?.jshshir,
     doctorId: a.doctor,
     serviceId: a.serviceId ?? null,
     date: a.date,
@@ -319,8 +319,13 @@ export async function setQueueStatus(id: string, status: QueueItem['status']) {
 }
 
 // --- Patients ---
-function normalizePassport(v?: string | null) {
-  return (v ?? '').replace(/\s+/g, '').toUpperCase() || undefined;
+// JSHSHIR — Jismoniy shaxsning shaxsiy identifikatsiya raqami (14 raqam).
+export function normalizeJshshir(v?: string | null) {
+  const digits = (v ?? '').replace(/\D/g, '');
+  return digits || undefined;
+}
+export function isValidJshshir(v?: string | null): boolean {
+  return normalizeJshshir(v) ?.length === 14;
 }
 export async function addPatient(p: {
   fullName: string;
@@ -330,15 +335,15 @@ export async function addPatient(p: {
   district?: string;
   gender?: Gender;
   birthDate?: string;
-  passport?: string;
+  jshshir?: string;
 }): Promise<Patient> {
-  const body = { ...p, passport: normalizePassport(p.passport) };
+  const body = { ...p, jshshir: normalizeJshshir(p.jshshir) };
   const created = await api<Patient>('/patients', { method: 'POST', body: JSON.stringify(body) });
   set('patients', (prev) => [created, ...prev]);
   return created;
 }
 export async function updatePatient(id: string, patch: Partial<Omit<Patient, 'id' | 'addedAt'>>) {
-  const normalized = { ...patch, ...(patch.passport !== undefined ? { passport: normalizePassport(patch.passport) } : {}) };
+  const normalized = { ...patch, ...(patch.jshshir !== undefined ? { jshshir: normalizeJshshir(patch.jshshir) } : {}) };
   set('patients', (prev) => prev.map((p) => (p.id === id ? { ...p, ...normalized } : p)));
   await api(`/patients/${id}`, { method: 'PATCH', body: JSON.stringify(normalized) });
 }

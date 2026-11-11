@@ -24,7 +24,7 @@ type LabTest = {
   id: string;
   createdAt: number;
   patientId: string;        // UUID — asosiy identifikator
-  patientPassport?: string; // qo'shimcha identifikator
+  patientJshshir?: string; // qo'shimcha identifikator
   patientName: string;      // ko'rsatish uchun
   doctorId?: string;
   doctorName?: string;
@@ -328,7 +328,7 @@ function labFromRow(row: any): LabTest {
     createdAt: Number(row.createdAt) || Date.now(),
     // Yangi yozuv: row.patientId UUID; eski: ism. Ism `extra.patientName` da ham saqlanadi.
     patientId: row.patientId ?? '',
-    patientPassport: row.patientPassport ?? extra.patientPassport,
+    patientJshshir: row.patientJshshir ?? extra.patientJshshir,
     patientName: extra.patientName ?? row.patientId ?? '',
     doctorId: extra.doctorId,
     doctorName: extra.doctorName,
@@ -351,7 +351,7 @@ function labFromRow(row: any): LabTest {
 function labToRowBody(t: Partial<LabTest> & { id?: string }) {
   const {
     id, patientName, testType, status, docDate, labDoctor,
-    patientId, patientPassport, doctorId, doctorName, templateId, priority, docNumber,
+    patientId, patientJshshir, doctorId, doctorName, templateId, priority, docNumber,
     patientBirth, patientAddress, sampleDate, laborant, results, resultNote, readyAt,
   } = t;
   // UUID bo'lsa UUID, aks holda ism — eski yozuvlar uchun fallback
@@ -359,13 +359,13 @@ function labToRowBody(t: Partial<LabTest> & { id?: string }) {
   return {
     ...(id ? { id } : {}),
     ...(dbPatientId !== undefined ? { patientId: dbPatientId } : {}),
-    ...(patientPassport !== undefined ? { patientPassport } : {}),
+    ...(patientJshshir !== undefined ? { patientJshshir } : {}),
     ...(testType !== undefined ? { testName: testType } : {}),
     ...(status !== undefined ? { status } : {}),
     ...(docDate !== undefined ? { date: docDate } : {}),
     ...(labDoctor !== undefined ? { doctorId: labDoctor } : {}),
     result: JSON.stringify({
-      patientName, patientPassport,
+      patientName, patientJshshir,
       doctorId, doctorName, templateId, priority, docNumber,
       patientBirth, patientAddress, sampleDate, laborant, results, resultNote, readyAt,
     }),
@@ -883,10 +883,10 @@ function DocInlineEditor({
   const buildPayload = (): NewTestPayload => {
     const doc = employees.find((e) => e.id === doctorId);
     const p = patients.find((x) => x.id === patientId);
-    const passport = (p?.passport ?? '').replace(/\s+/g, '').toUpperCase() || undefined;
+    const jshshir = (p?.jshshir ?? '').replace(/\s+/g, '').toUpperCase() || undefined;
     return {
       patientId: patientId || `walkin_${Date.now()}`,
-      patientPassport: passport,
+      patientJshshir: jshshir,
       patientName: chosenName,
       doctorId: doc?.id,
       doctorName: doc?.fullName,

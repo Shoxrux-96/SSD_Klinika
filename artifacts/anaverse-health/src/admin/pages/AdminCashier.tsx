@@ -481,7 +481,7 @@ export function AdminCashier() {
             addDebt({
               treatmentId: r.id,
               patientId: p?.id,
-              patientPassport: p?.passport,
+              patientJshshir: p?.jshshir,
               patient: r.patient,
               phone: p?.phone,
               doctor: r.doctor,
@@ -897,6 +897,9 @@ function ReceiptModal({
 }) {
   const contact = useContactSettings();
   const logo = contact.logoEnabled !== false ? contact.logoDataUrl : undefined;
+  const patients = usePatients();
+  const patient = patients.find((x) => x.id === payment.patientId);
+  const jshshir = patient?.jshshir;
   function print() {
     const node = document.getElementById('chek-print-area');
     if (!node) return;
@@ -924,6 +927,7 @@ function ReceiptModal({
             <div className="chek-divider" />
             <dl className="chek-rows">
               <div><dt>Bemor</dt><dd>{payment.patientName || '—'}</dd></div>
+              {jshshir && <div><dt>JSHSHIR</dt><dd>{jshshir}</dd></div>}
               <div><dt>Shifokor</dt><dd>{payment.doctorName || '—'}</dd></div>
               <div><dt>Sana</dt><dd>{fmtDateTime(payment.date)}</dd></div>
               <div><dt>Xizmat</dt><dd>{payment.serviceName || '—'}</dd></div>

@@ -16,9 +16,23 @@ router.get("/patients/:id", async (req, res) => {
   res.json(row);
 });
 
+function normalizeJshshir(v: unknown): string | null {
+  if (v == null) return null;
+  const digits = String(v).replace(/\D/g, "");
+  return digits || null;
+}
+function validateJshshir(v: unknown): { ok: true; value: string } | { ok: false; error: string } {
+  const j = normalizeJshshir(v);
+  if (!j) return { ok: false, error: "JSHSHIR majburiy" };
+  if (j.length !== 14) return { ok: false, error: "JSHSHIR to'liq 14 raqamdan iborat bo'lishi kerak" };
+  return { ok: true, value: j };
+}
+
 router.post("/patients", async (req, res) => {
   const b = req.body ?? {};
   if (!b.fullName) return res.status(400).json({ error: "fullName required" });
+  const jv = validateJshshir(b.jshshir);
+  if (!jv.ok) return res.status(400).json({ error: jv.error });
   const row = {
     id: b.id ?? randomUUID(),
     fullName: String(b.fullName),
@@ -28,12 +42,19 @@ router.post("/patients", async (req, res) => {
     district: b.district ?? null,
     gender: b.gender ?? null,
     birthDate: b.birthDate ?? null,
-    passport: b.passport ?? null,
+    jshshir: jv.value,
     addedAt: b.addedAt ?? Date.now(),
     archived: Boolean(b.archived),
   };
-  const [created] = await db.insert(patientsTable).values(row).returning();
-  res.status(201).json(created);
+  try {
+    const [created] = await db.insert(patientsTable).values(row).returning();
+    res.status(201).json(created);
+  } catch (e: any) {
+    if (String(e?.message ?? "").match(/unique|duplicate/i)) {
+      return res.status(409).json({ error: "Bu JSHSHIR bilan bemor allaqachon roʻyxatdan oʻtgan" });
+    }
+    throw e;
+  }
 });
 
 async function updatePatient(req: any, res: any) {
@@ -41,13 +62,25 @@ async function updatePatient(req: any, res: any) {
   delete patch.id;
   delete patch.addedAt;
   if (Object.keys(patch).length === 0) return res.status(400).json({ error: "No fields" });
-  const [row] = await db
-    .update(patientsTable)
-    .set(patch)
-    .where(eq(patientsTable.id, req.params.id))
-    .returning();
-  if (!row) return res.status(404).json({ error: "Not found" });
-  res.json(row);
+  if (patch.jshshir !== undefined) {
+    const jv = validateJshshir(patch.jshshir);
+    if (!jv.ok) return res.status(400).json({ error: jv.error });
+    patch.jshshir = jv.value;
+  }
+  try {
+    const [row] = await db
+      .update(patientsTable)
+      .set(patch)
+      .where(eq(patientsTable.id, req.params.id))
+      .returning();
+    if (!row) return res.status(404).json({ error: "Not found" });
+    res.json(row);
+  } catch (e: any) {
+    if (String(e?.message ?? "").match(/unique|duplicate/i)) {
+      return res.status(409).json({ error: "Bu JSHSHIR bilan bemor allaqachon roʻyxatdan oʻtgan" });
+    }
+    throw e;
+  }
 }
 router.put("/patients/:id", updatePatient);
 router.patch("/patients/:id", updatePatient);

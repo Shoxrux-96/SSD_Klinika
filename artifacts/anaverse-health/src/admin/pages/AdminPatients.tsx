@@ -84,7 +84,7 @@ export function AdminPatients() {
         p.fullName.toLowerCase().includes(q) ||
         p.phone.toLowerCase().includes(q) ||
         p.address.toLowerCase().includes(q) ||
-        (p.passport ?? '').toLowerCase().includes(q),
+        (p.jshshir ?? '').toLowerCase().includes(q),
       )
       .sort((a, b) => b.addedAt - a.addedAt);
   }, [patients, tab, dateFilter, query]);
@@ -278,7 +278,7 @@ export function AdminPatients() {
       )}
       {adding && (
         <PatientAddModal
-          existingPassports={patients.map((p) => p.passport ?? '').filter(Boolean)}
+          existingJshshirs={patients.map((p) => p.jshshir ?? '').filter(Boolean)}
           onClose={() => setAdding(false)}
           onSave={(p) => { addPatient(p); setAdding(false); }}
         />
@@ -290,7 +290,7 @@ export function AdminPatients() {
   );
 }
 
-function PatientAddModal({ onClose, onSave, existingPassports }: { onClose: () => void; onSave: (p: { fullName: string; phone: string; address: string; region?: string; district?: string; gender?: Gender; birthDate?: string; passport?: string }) => void; existingPassports: string[] }) {
+function PatientAddModal({ onClose, onSave, existingJshshirs }: { onClose: () => void; onSave: (p: { fullName: string; phone: string; address: string; region?: string; district?: string; gender?: Gender; birthDate?: string; jshshir?: string }) => void; existingJshshirs: string[] }) {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('+998 ');
   const [address, setAddress] = useState('');
@@ -298,19 +298,23 @@ function PatientAddModal({ onClose, onSave, existingPassports }: { onClose: () =
   const [district, setDistrict] = useState('');
   const [gender, setGender] = useState<Gender | ''>('');
   const [birthDate, setBirthDate] = useState('');
-  const [passport, setPassport] = useState('');
-  const [passportErr, setPassportErr] = useState('');
+  const [jshshir, setJshshir] = useState('');
+  const [jshshirErr, setJshshirErr] = useState('');
 
   const districts = UZ_REGIONS.find((r) => r.name === region)?.districts ?? [];
 
-  const normalizePassport = (v: string) => v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11);
+  const normalizeJshshir = (v: string) => v.replace(/\D/g, '').slice(0, 14);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!fullName.trim()) return;
-    const p = normalizePassport(passport);
-    if (p && existingPassports.includes(p)) {
-      setPassportErr('Bu pasport raqami bilan bemor allaqachon ro‘yxatdan o‘tgan.');
+    const p = normalizeJshshir(jshshir);
+    if (!p || p.length !== 14) {
+      setJshshirErr("JSHSHIR to'liq 14 raqamdan iborat bo'lishi kerak.");
+      return;
+    }
+    if (existingJshshirs.includes(p)) {
+      setJshshirErr("Bu JSHSHIR bilan bemor allaqachon roʻyxatdan oʻtgan.");
       return;
     }
     onSave({
@@ -321,7 +325,7 @@ function PatientAddModal({ onClose, onSave, existingPassports }: { onClose: () =
       district: district || undefined,
       gender: gender || undefined,
       birthDate: birthDate || undefined,
-      passport: p || undefined,
+      jshshir: p,
     });
   };
 
@@ -364,16 +368,19 @@ function PatientAddModal({ onClose, onSave, existingPassports }: { onClose: () =
             />
           </label>
           <label>
-            <span>Pasport (seriya + raqam)</span>
+            <span>JSHSHIR <span style={{ color: '#dc2626' }}>*</span></span>
             <input
-              value={passport}
-              onChange={(e) => { setPassport(normalizePassport(e.target.value)); setPassportErr(''); }}
-              placeholder="AA1234567"
-              maxLength={11}
-              style={{ textTransform: 'uppercase', letterSpacing: '0.6px' }}
+              value={jshshir}
+              onChange={(e) => { setJshshir(normalizeJshshir(e.target.value)); setJshshirErr(''); }}
+              placeholder="12345678901234"
+              maxLength={14}
+              inputMode="numeric"
+              pattern="[0-9]{14}"
+              required
+              style={{ letterSpacing: '0.6px', fontVariantNumeric: 'tabular-nums' }}
             />
-            {passportErr && <small style={{ color: '#dc2626' }}>{passportErr}</small>}
-            {!passportErr && <small className="admin-cell-muted">Bemorlarni bir-biridan farqlash uchun ishlatiladi (ixtiyoriy, lekin takrorlanmasligi kerak).</small>}
+            {jshshirErr && <small style={{ color: '#dc2626' }}>{jshshirErr}</small>}
+            {!jshshirErr && <small className="admin-cell-muted">Jismoniy shaxsning shaxsiy identifikatsiya raqami — 14 ta raqam. Majburiy, takrorlanmasligi kerak.</small>}
           </label>
           <div className="appt-modal-row">
             <label>
@@ -421,10 +428,11 @@ function PatientProfileModal({
   const [district, setDistrict] = useState(patient.district ?? '');
   const [gender, setGender] = useState<Gender | ''>(patient.gender ?? '');
   const [birthDate, setBirthDate] = useState(patient.birthDate ?? '');
-  const [passport, setPassport] = useState(patient.passport ?? '');
+  const [jshshir, setJshshir] = useState(patient.jshshir ?? '');
 
   const districts = UZ_REGIONS.find((r) => r.name === region)?.districts ?? [];
-  const normalizePassport = (v: string) => v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11);
+  const normalizeJshshir = (v: string) => v.replace(/\D/g, '').slice(0, 14);
+  const [jshshirErr, setJshshirErr] = useState('');
 
   const initials = (fullName || patient.fullName).split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
   const age = birthDate ? calcAge(birthDate) : null;
@@ -434,6 +442,11 @@ function PatientProfileModal({
   const submit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!fullName.trim()) return;
+    const p = normalizeJshshir(jshshir);
+    if (!p || p.length !== 14) {
+      setJshshirErr("JSHSHIR to'liq 14 raqamdan iborat bo'lishi kerak.");
+      return;
+    }
     onSave({
       fullName: fullName.trim(),
       phone: phone.trim(),
@@ -442,7 +455,7 @@ function PatientProfileModal({
       district: district || undefined,
       gender: gender || undefined,
       birthDate: birthDate || undefined,
-      passport: normalizePassport(passport) || undefined,
+      jshshir: p,
     });
   };
 
@@ -488,9 +501,9 @@ function PatientProfileModal({
                     <Calendar size={13} /> {age} yosh
                   </span>
                 )}
-                {passport && (
+                {jshshir && (
                   <span className="patient-view-chip neutral">
-                    <Fingerprint size={13} /> {passport}
+                    <Fingerprint size={13} /> {jshshir}
                   </span>
                 )}
               </div>
@@ -536,14 +549,18 @@ function PatientProfileModal({
               />
               <Field
                 icon={<Fingerprint size={16} />}
-                label="Pasport (seriya + raqam)"
+                label="JSHSHIR *"
                 editable={isEdit}
-                value={passport}
-                onChange={(v) => setPassport(normalizePassport(v))}
-                display={passport || '—'}
-                placeholder="AA1234567"
+                value={jshshir}
+                onChange={(v) => { setJshshir(normalizeJshshir(v)); setJshshirErr(''); }}
+                display={jshshir || '—'}
+                placeholder="12345678901234"
                 mono
-                inputStyle={{ textTransform: 'uppercase', letterSpacing: '0.6px' }}
+                maxLength={14}
+                inputMode="numeric"
+                required
+                hint={jshshirErr || undefined}
+                inputStyle={{ letterSpacing: '0.6px', fontVariantNumeric: 'tabular-nums' }}
               />
               <Field
                 icon={<Phone size={16} />}
@@ -606,7 +623,7 @@ function PatientProfileModal({
                   setFullName(patient.fullName); setPhone(patient.phone); setAddress(patient.address);
                   setRegion(patient.region ?? ''); setDistrict(patient.district ?? '');
                   setGender(patient.gender ?? ''); setBirthDate(patient.birthDate ?? '');
-                  setPassport(patient.passport ?? ''); setMode('view');
+                  setJshshir(patient.jshshir ?? ''); setMode('view');
                 }}
               >Bekor qilish</button>
               <button type="submit" className="admin-btn admin-btn-brand">
@@ -627,7 +644,7 @@ function PatientProfileModal({
 /* ---------- Field helper (view-or-edit) ---------- */
 function Field({
   icon, label, editable, value, onChange, display, placeholder, type, max, hint,
-  mono, wide, select, href, disabled, required, inputStyle,
+  mono, wide, select, href, disabled, required, inputStyle, maxLength, inputMode,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -646,6 +663,8 @@ function Field({
   disabled?: boolean;
   required?: boolean;
   inputStyle?: React.CSSProperties;
+  maxLength?: number;
+  inputMode?: 'text' | 'numeric' | 'decimal' | 'tel' | 'email' | 'url' | 'search' | 'none';
 }) {
   if (!editable) {
     return (
@@ -682,6 +701,8 @@ function Field({
           value={value}
           placeholder={placeholder}
           max={max}
+          maxLength={maxLength}
+          inputMode={inputMode}
           required={required}
           onChange={(e) => onChange(e.target.value)}
           style={inputStyle}
@@ -803,14 +824,14 @@ function MedicalCardModal({ patient, onClose }: { patient: Patient; onClose: () 
 
   // Yozuvni ushbu bemor bilan bog'lashni 3 qatlamda tekshiramiz:
   // 1) patientId === patient.id (UUID — eng ishonchli)
-  // 2) patientPassport === patient.passport (ikkinchi himoya qatlami)
+  // 2) patientJshshir === patient.jshshir (ikkinchi himoya qatlami)
   // 3) legacy fallback — ism-familya bo'yicha
-  const normPassport = (v?: string | null) => (v ?? '').replace(/\s+/g, '').toUpperCase();
-  const myPassport = normPassport(patient.passport);
+  const normJshshir = (v?: string | null) => (v ?? '').replace(/\s+/g, '').toUpperCase();
+  const myJshshir = normJshshir(patient.jshshir);
   const myNameLower = patient.fullName.toLowerCase();
-  const belongs = (rec: { patientId?: string; patientPassport?: string; patient?: string; patientName?: string }) => {
+  const belongs = (rec: { patientId?: string; patientJshshir?: string; patient?: string; patientName?: string }) => {
     if (rec.patientId && rec.patientId === patient.id) return true;
-    if (myPassport && rec.patientPassport && normPassport(rec.patientPassport) === myPassport) return true;
+    if (myJshshir && rec.patientJshshir && normJshshir(rec.patientJshshir) === myJshshir) return true;
     const legacy = rec.patient ?? rec.patientName ?? '';
     return legacy.toLowerCase() === myNameLower;
   };
@@ -844,7 +865,7 @@ function MedicalCardModal({ patient, onClose }: { patient: Patient; onClose: () 
       if (l.labDoctor) b.doctors.add(l.labDoctor);
     }
     return Array.from(byDate.values()).sort((a, b) => b.date.localeCompare(a.date));
-  }, [patient.id, patient.fullName, patient.passport, treatments, prescriptions, labTests]);
+  }, [patient.id, patient.fullName, patient.jshshir, treatments, prescriptions, labTests]);
 
   const sectionsFor = (b: VisitBundle): Record<SectionKey, string> => ({
     complaints:    joinUniq(b.treatments.map((t) => t.complaints ?? '')),
@@ -879,7 +900,7 @@ function MedicalCardModal({ patient, onClose }: { patient: Patient; onClose: () 
               <div className="patient-view-chips">
                 <span className="patient-view-chip neutral"><UserCircle2 size={13} /> {genderLabel}</span>
                 {age !== null && <span className="patient-view-chip neutral"><Calendar size={13} /> {age} yosh</span>}
-                {patient.passport && <span className="patient-view-chip neutral"><Fingerprint size={13} /> {patient.passport}</span>}
+                {patient.jshshir && <span className="patient-view-chip neutral"><Fingerprint size={13} /> {patient.jshshir}</span>}
                 <span className="patient-view-chip is-active"><FileText size={13} /> {bundles.length} ta koʻrik</span>
               </div>
             </div>
