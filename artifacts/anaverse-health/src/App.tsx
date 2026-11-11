@@ -68,9 +68,10 @@ function DoctorCarousel() {
   const assignments = useAssignments();
   const services = useServices();
   const doctors = useMemo(() => {
-    // Barcha faol tibbiy xodimlar public karuselda ko'rsatiladi
-    void assignments;
-    return employees.filter((e) => !e.archived && e.category === 'medical');
+    const assignedIds = new Set(assignments.map((a) => a.employeeId));
+    return employees.filter(
+      (e) => !e.archived && e.category === 'medical' && assignedIds.has(e.id),
+    );
   }, [employees, assignments]);
   const servicesFor = (empId: string) => {
     const ids = new Set(
@@ -273,9 +274,8 @@ function App() {
   const assignmentsAll = useAssignments();
 
   const publicDoctors = useMemo(() => {
-    // Public qabul formasida — barcha faol shifokorlar ko'rinadi
-    void assignmentsAll;
-    return employees.filter((e) => !e.archived && e.category === 'medical');
+    const assigned = new Set(assignmentsAll.map((a) => a.employeeId));
+    return employees.filter((e) => !e.archived && e.category === 'medical' && assigned.has(e.id));
   }, [employees, assignmentsAll]);
 
   const [apptName, setApptName] = useState('');
@@ -285,13 +285,11 @@ function App() {
 
   const apptAvailableServices = useMemo(() => {
     const emp = publicDoctors.find((e) => e.id === apptDoctor);
-    if (!emp) return servicesAll.filter((s) => !s.archived);
+    if (!emp) return [];
     const ids = new Set(
       assignmentsAll.filter((a) => a.employeeId === emp.id).map((a) => a.serviceId),
     );
-    const filtered = servicesAll.filter((s) => !s.archived && ids.has(s.id));
-    // Xizmat biriktirilmagan bo'lsa — barcha faol xizmatlardan tanlash mumkin
-    return filtered.length ? filtered : servicesAll.filter((s) => !s.archived);
+    return servicesAll.filter((s) => !s.archived && ids.has(s.id));
   }, [apptDoctor, publicDoctors, assignmentsAll, servicesAll]);
 
   useEffect(() => {
