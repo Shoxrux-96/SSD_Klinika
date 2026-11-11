@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Clock3, Monitor, Phone, UserCheck, X } from 'lucide-react';
-import { removeFromQueue, setQueueStatus, useQueue } from '../store';
+import { CheckCircle2, Clock3, DoorOpen, Monitor, Phone, Trash2, UserCheck } from 'lucide-react';
+import { removeFromQueue, setQueueStatus, useQueue, type QueueItem } from '../store';
 import { usePagination, TablePagination } from '../components/TablePagination';
 import { TvScreen } from '../components/TvScreen';
 
@@ -9,10 +9,82 @@ function waitLabel(ms: number) {
   return `${min} daq`;
 }
 
-function statusChip(s: 'navbatda' | 'kabinetda' | 'tugatildi') {
-  if (s === 'kabinetda') return <span className="admin-chip chip-ok">kabinetda</span>;
-  if (s === 'tugatildi') return <span className="admin-chip chip-missed">tugatildi</span>;
-  return <span className="admin-chip chip-wait">navbatda</span>;
+type QStatus = 'navbatda' | 'kabinetda' | 'tugatildi';
+
+function statusChip(s: QStatus) {
+  if (s === 'kabinetda') return <span className="admin-chip chip-ok">Kabinetda</span>;
+  if (s === 'tugatildi') return <span className="admin-chip chip-missed">Tugatildi</span>;
+  return <span className="admin-chip chip-wait">Navbatda</span>;
+}
+
+/** Bir marta bosiladigan status tugmalari (double-click himoyasi) */
+function QueueStatusActions({ item }: { item: QueueItem }) {
+  const [busy, setBusy] = useState(false);
+  const callToRoom = async () => {
+    if (busy || item.status === 'kabinetda' || item.status === 'tugatildi') return;
+    setBusy(true);
+    try { await setQueueStatus(item.id, 'kabinetda'); } finally { setBusy(false); }
+  };
+  const markDone = async () => {
+    if (busy || item.status === 'tugatildi') return;
+    setBusy(true);
+    try { await setQueueStatus(item.id, 'tugatildi'); } finally { setBusy(false); }
+  };
+  const remove = async () => {
+    if (busy) return;
+    if (!confirm("Navbatdan o'chirilsinmi? Bu amal qaytarib bo'lmaydi.")) return;
+    setBusy(true);
+    try { await removeFromQueue(item.id); } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="queue-actions">
+      {/* Kabinetga chaqirish — faqat 'navbatda' statusida ko'rinadi */}
+      {item.status === 'navbatda' && (
+        <button
+          className="admin-icon-btn sm ok"
+          disabled={busy}
+          onClick={callToRoom}
+          title="Kabinetga chaqirish"
+          aria-label="Kabinetga chaqirish"
+        >
+          <DoorOpen size={14} />
+        </button>
+      )}
+      {/* Tugatildi — 'kabinetda' statusida ko'rinadi */}
+      {item.status === 'kabinetda' && (
+        <button
+          className="admin-icon-btn sm ok"
+          disabled={busy}
+          onClick={markDone}
+          title="Qabulni yakunlash"
+          aria-label="Tugatildi"
+        >
+          <CheckCircle2 size={14} />
+        </button>
+      )}
+      {/* Qo'ng'iroq — jonli bemor bilan aloqa (hamma statusda) */}
+      <button
+        className="admin-icon-btn sm warn"
+        title="Qo'ng'iroq"
+        aria-label="Qo'ng'iroq"
+      >
+        <Phone size={14} />
+      </button>
+      {/* O'chirish — faqat tugatilmagan statuslarda */}
+      {item.status !== 'tugatildi' && (
+        <button
+          className="admin-icon-btn sm danger"
+          disabled={busy}
+          onClick={remove}
+          title="Navbatdan o'chirish"
+          aria-label="O'chirish"
+        >
+          <Trash2 size={14} />
+        </button>
+      )}
+    </div>
+  );
 }
 
 export function AdminQueue() {
@@ -22,6 +94,7 @@ export function AdminQueue() {
 
   const inRoom = queue.filter((q) => q.status === 'kabinetda').length;
   const waiting = queue.filter((q) => q.status === 'navbatda').length;
+  const done = queue.filter((q) => q.status === 'tugatildi').length;
   const avg =
     waiting === 0
       ? '0 daq'
@@ -51,7 +124,7 @@ export function AdminQueue() {
         <div className="admin-stat-card"><div className="admin-stat-icon"><UserCheck size={18} /></div><div className="admin-stat-copy"><small>Navbatda</small><strong>{waiting} bemor</strong><span className="admin-stat-trend trend-flat">joriy</span></div></div>
         <div className="admin-stat-card"><div className="admin-stat-icon"><Clock3 size={18} /></div><div className="admin-stat-copy"><small>O‘rtacha kutish</small><strong>{avg}</strong><span className="admin-stat-trend trend-flat">joriy</span></div></div>
         <div className="admin-stat-card"><div className="admin-stat-icon"><UserCheck size={18} /></div><div className="admin-stat-copy"><small>Kabinetda</small><strong>{inRoom} bemor</strong><span className="admin-stat-trend trend-up">faol</span></div></div>
-        <div className="admin-stat-card"><div className="admin-stat-icon"><X size={18} /></div><div className="admin-stat-copy"><small>Jami navbat</small><strong>{queue.length} bemor</strong><span className="admin-stat-trend trend-flat">bugun</span></div></div>
+        <div className="admin-stat-card"><div className="admin-stat-icon"><CheckCircle2 size={18} /></div><div className="admin-stat-copy"><small>Yakunlangan</small><strong>{done} bemor</strong><span className="admin-stat-trend trend-up">bugun</span></div></div>
       </div>
 
       <section className="admin-card">
@@ -87,19 +160,7 @@ export function AdminQueue() {
                   <td className="admin-cell-muted">{waitLabel(q.addedAt)}</td>
                   <td>{statusChip(q.status)}</td>
                   <td className="admin-cell-right">
-                    <div className="queue-actions">
-                      <button
-                        className="admin-icon-btn sm ok"
-                        aria-label="Kabinetga chaqirish"
-                        title="Kabinetga chaqirish"
-                        onClick={() => setQueueStatus(q.id, 'kabinetda')}
-                        disabled={q.status === 'kabinetda'}
-                      >
-                        <UserCheck size={14} />
-                      </button>
-                      <button className="admin-icon-btn sm warn" aria-label="Qo‘ng‘iroq" title="Qo‘ng‘iroq"><Phone size={14} /></button>
-                      <button className="admin-icon-btn sm danger" aria-label="O‘chirish" title="O‘chirish" onClick={() => removeFromQueue(q.id)}><X size={14} /></button>
-                    </div>
+                    <QueueStatusActions item={q} />
                   </td>
                 </tr>
               ))}
