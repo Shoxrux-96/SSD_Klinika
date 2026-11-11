@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { usePagination, TablePagination } from '../components/TablePagination';
 import {
   CalendarDays,
@@ -19,6 +20,7 @@ import {
   type Status,
   addAppointment as storeAdd,
   setAppointmentStatus,
+  deleteAppointment,
   useAppointments,
   useAssignments,
   useEmployees,
@@ -293,13 +295,32 @@ function StatusActions({
 }: { appt: Appointment; size?: number; vertical?: boolean }) {
   const now = useNow();
   const locked = now > slotLockMs(appt.date, appt.time);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [busy, setBusy] = useState(false);
+
+  // "kutilmoqda" bo'lmagan qabullarda tugmalar ko'rinmaydi (bir marta bosiladi).
+  // Agar vaqti o'tib ketgan bo'lsa ham qulf belgisi chiqadi.
+  const alreadySet = appt.status !== 'kutilmoqda';
+
+  if (alreadySet) {
+    return (
+      <div
+        className={`appt-status-actions is-done${vertical ? ' is-vertical' : ''}`}
+        onClick={(e) => e.stopPropagation()}
+        title={`Status: ${STATUS_LABEL[appt.status]}`}
+      >
+        <CheckCircle2 size={size} style={{ opacity: 0.4 }} />
+      </div>
+    );
+  }
 
   if (locked) {
     return (
       <div
         className={`appt-status-actions is-locked${vertical ? ' is-vertical' : ''}`}
         onClick={(e) => e.stopPropagation()}
-        title="Vaqti o‘tgan — status o‘zgartirib bo‘lmaydi"
+        title="Vaqti o'tgan — status o'zgartirib bo'lmaydi"
         aria-label="Yopiq"
       >
         <Lock size={size} />
@@ -307,34 +328,61 @@ function StatusActions({
     );
   }
 
+  // Bir marta bosilganda: busy flag — ikkinchi bosish ishlamaydi
+  const handleKeldi = async () => {
+    if (busy) return;
+    setBusy(true);
+    await setAppointmentStatus(appt.id, 'keldi');
+    // Navbat sahifasiga o'tish (admin va reception uchun)
+    const base = location.pathname.startsWith('/reception') ? '/reception' : '/admin';
+    navigate(`${base}/queue`);
+  };
+
+  const handleKelmadi = async () => {
+    if (busy) return;
+    setBusy(true);
+    await setAppointmentStatus(appt.id, 'kelmadi');
+  };
+
+  const handleBekor = async () => {
+    if (busy) return;
+    if (!confirm("Ushbu qabul o'chirilsinmi? Slot bo'shaydi va yangi qabul yoziladi.")) return;
+    setBusy(true);
+    // Bekor qilish → qabul butunlay o'chadi, slot bo'shaydi
+    await deleteAppointment(appt.id);
+  };
+
   return (
     <div className={`appt-status-actions${vertical ? ' is-vertical' : ''}`} onClick={(e) => e.stopPropagation()}>
       <button
         type="button"
         className="admin-icon-btn sm ok"
-        onClick={() => setAppointmentStatus(appt.id, 'keldi')}
-        aria-label="Keldi"
-        title="Keldi"
+        disabled={busy}
+        onClick={handleKeldi}
+        aria-label="Keldi — navbatga"
+        title="Keldi — navbatga qo'yish"
       >
         <CheckCircle2 size={size} />
       </button>
       <button
         type="button"
-        className="admin-icon-btn sm danger"
-        onClick={() => setAppointmentStatus(appt.id, 'bekor')}
-        aria-label="Bekor qilish"
-        title="Bekor qilish"
+        className="admin-icon-btn sm missed"
+        disabled={busy}
+        onClick={handleKelmadi}
+        aria-label="Kelmadi"
+        title="Kelmadi — navbat o'tkazilsin"
       >
-        <XCircle size={size} />
+        <UserX size={size} />
       </button>
       <button
         type="button"
-        className="admin-icon-btn sm missed"
-        onClick={() => setAppointmentStatus(appt.id, 'kelmadi')}
-        aria-label="Kelmadi"
-        title="Kelmadi"
+        className="admin-icon-btn sm danger"
+        disabled={busy}
+        onClick={handleBekor}
+        aria-label="Bekor qilish"
+        title="Bekor qilish — slot bo'shaydi"
       >
-        <UserX size={size} />
+        <XCircle size={size} />
       </button>
     </div>
   );

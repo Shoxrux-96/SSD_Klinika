@@ -196,6 +196,19 @@ export async function addAppointment(a: Omit<Appointment, 'id' | 'status'>) {
   const created = await api<Appointment>('/appointments', { method: 'POST', body: JSON.stringify(a) });
   set('appointments', (prev) => [...prev, created]);
 }
+
+// Qabul'ni butunlay o'chirish — slot bo'shaydi va yangi qabul yoziladigan bo'ladi.
+// Tegishli navbat yozuvi ham tozalanadi (agar bor bo'lsa).
+export async function deleteAppointment(id: string) {
+  set('appointments', (prev) => prev.filter((a) => a.id !== id));
+  // Agar navbatda bo'lsa — uni ham o'chiramiz
+  const q = state.queue.find((q) => q.id === id);
+  if (q) {
+    set('queue', (prev) => prev.filter((x) => x.id !== id));
+    try { await api(`/queue/${id}`, { method: 'DELETE' }); } catch { /* ignore */ }
+  }
+  await api(`/appointments/${id}`, { method: 'DELETE' });
+}
 function isToday(ts: number) {
   const d = new Date(ts);
   const now = new Date();
