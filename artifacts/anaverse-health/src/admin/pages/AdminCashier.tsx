@@ -921,17 +921,31 @@ function ReceiptModal({
           <div id="chek-print-area">
             <div className="chek-head">
               {logo && <img src={logo} alt="logo" className="chek-logo" />}
-              <div className="chek-clinic">{CLINIC_NAME}</div>
+              <div className="chek-clinic">SSD KLINIKA</div>
               <div className="chek-clinic-sub">{CLINIC_SUB}</div>
+              {contact.address && <div className="chek-clinic-meta">{contact.address}</div>}
+              {contact.phones?.[0] && (
+                <div className="chek-clinic-meta">
+                  Tel: {contact.phones.map((p) => p.number).slice(0, 2).join(' · ')}
+                </div>
+              )}
+            </div>
+            <div className="chek-divider double" />
+            <div className="chek-title">TO‘LOV CHEKI</div>
+            <div className="chek-receipt-no">
+              № {payment.id.slice(-8).toUpperCase()} · {fmtDateTime(payment.date)}
             </div>
             <div className="chek-divider" />
             <dl className="chek-rows">
               <div><dt>Bemor</dt><dd>{payment.patientName || '—'}</dd></div>
               {jshshir && <div><dt>JSHSHIR</dt><dd>{jshshir}</dd></div>}
+              {patient?.phone && <div><dt>Telefon</dt><dd>{patient.phone}</dd></div>}
               <div><dt>Shifokor</dt><dd>{payment.doctorName || '—'}</dd></div>
-              <div><dt>Sana</dt><dd>{fmtDateTime(payment.date)}</dd></div>
               <div><dt>Xizmat</dt><dd>{payment.serviceName || '—'}</dd></div>
-              <div><dt>Summa</dt><dd>{fmtSum(payment.amount)}</dd></div>
+            </dl>
+            <div className="chek-divider" />
+            <dl className="chek-rows">
+              <div><dt>Xizmat summasi</dt><dd>{fmtSum(payment.amount)}</dd></div>
               {(payment.discount - (payment.usedPromoAmount || 0)) > 0 && (
                 <div className="chek-discount">
                   <dt>Chegirma</dt><dd>− {fmtSum(payment.discount - (payment.usedPromoAmount || 0))}</dd>
@@ -942,24 +956,47 @@ function ReceiptModal({
                   <dt>Promo ({payment.usedPromoCode})</dt><dd>− {fmtSum(payment.usedPromoAmount!)}</dd>
                 </div>
               )}
-              <div><dt>Usul</dt><dd>{methodLabel[payment.method]}</dd></div>
+              <div><dt>To‘lov usuli</dt><dd>{methodLabel[payment.method]}</dd></div>
             </dl>
             <div className="chek-divider" />
             <div className="chek-total">
-              <span>JAMI</span>
+              <span>JAMI TO‘LANGAN</span>
               <strong>{fmtSum(payment.total)}</strong>
             </div>
             {promo && (
-              <div className="chek-promo">
-                <div className="chek-promo-label">Yangi Promo kod</div>
-                <div className="chek-promo-code">{promo.code}</div>
-                <div className="chek-promo-meta">
-                  Keyingi to‘lovda — {fmtSum(promo.amount)} chegirma · {new Date(promo.expiresAt).toLocaleDateString('ru-RU')} gacha
+              <>
+                <div className="chek-divider" />
+                <div className="chek-promo">
+                  <div className="chek-promo-label">★ YANGI PROMO KOD ★</div>
+                  <div className="chek-promo-code">{promo.code}</div>
+                  <div className="chek-promo-meta">
+                    Keyingi tashrifingizda <strong>{fmtSum(promo.amount)}</strong> chegirma
+                  </div>
+                  <div className="chek-promo-meta">
+                    Amal muddati: {new Date(promo.expiresAt).toLocaleDateString('ru-RU')}
+                  </div>
                 </div>
-              </div>
+              </>
             )}
-            {payment.note && <div className="chek-note">Izoh: {payment.note}</div>}
-            <div className="chek-foot">Tashrifingiz uchun rahmat!</div>
+            {payment.note && (
+              <>
+                <div className="chek-divider" />
+                <div className="chek-note">Izoh: {payment.note}</div>
+              </>
+            )}
+            <div className="chek-divider double" />
+            <div className="chek-foot">
+              <div className="chek-foot-thanks">Tashrifingiz uchun rahmat!</div>
+              <div className="chek-foot-note">Sogʻliqni asrash — bizning asosiy maqsadimiz</div>
+              {contact.socials?.[0]?.url && (
+                <div className="chek-foot-meta">
+                  {contact.socials.slice(0, 2).map((s) => s.handle).join(' · ')}
+                </div>
+              )}
+              <div className="chek-foot-ts">
+                Chop etilgan: {new Date().toLocaleString('ru-RU')}
+              </div>
+            </div>
           </div>
         </div>
         <button className="chek-print-btn" onClick={print}>
@@ -973,24 +1010,39 @@ function ReceiptModal({
 const receiptPrintCss = `
 @page { size: 80mm auto; margin: 0; }
 html, body { margin: 0; padding: 0; background: #fff; color: #000; }
-body { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 11px; line-height: 1.35; }
-.chek { width: 72mm; margin: 0 auto; padding: 3mm; box-sizing: border-box; }
+body { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 10pt; line-height: 1.4; }
+.chek { width: 72mm; margin: 0 auto; padding: 3mm; box-sizing: border-box; font-size: 10pt; }
+.chek * { font-size: 10pt; }
 .chek-head { text-align: center; }
-.chek-logo { display: block; margin: 0 auto 4px; max-width: 48mm; max-height: 18mm; object-fit: contain; }
-.chek-clinic { font-weight: 800; letter-spacing: .08em; font-size: 14px; }
-.chek-clinic-sub { font-size: 10px; margin-top: 2px; }
-.chek-divider { border-top: 1px dashed #000; margin: 6px 0; }
+.chek-logo { display: block; margin: 0 auto 3px; max-width: 48mm; max-height: 18mm; object-fit: contain; }
+.chek-clinic { font-weight: 900; letter-spacing: .12em; font-size: 14pt; }
+.chek-clinic-sub { font-weight: 600; margin-top: 2px; }
+.chek-clinic-meta { margin-top: 1px; }
+.chek-divider { border-top: 1px dashed #000; margin: 5px 0; }
+.chek-divider.double { border-top: 2px solid #000; border-bottom: 1px dashed #000; height: 2px; margin: 6px 0; padding-top: 2px; }
+.chek-title { text-align: center; font-weight: 900; letter-spacing: .25em; margin: 2px 0; font-size: 11pt; }
+.chek-title * { font-size: 11pt; }
+.chek-receipt-no { text-align: center; margin-bottom: 2px; }
 .chek-rows { margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
-.chek-rows > div { display: flex; justify-content: space-between; gap: 6px; font-size: 11px; }
+.chek-rows > div { display: flex; justify-content: space-between; gap: 6px; align-items: baseline; }
 .chek-rows dt { margin: 0; }
-.chek-rows dd { margin: 0; text-align: right; font-weight: 700; }
-.chek-total { display: flex; justify-content: space-between; font-weight: 800; font-size: 13px; margin-top: 4px; }
-.chek-promo { margin-top: 8px; border: 1px dashed #000; padding: 6px; text-align: center; }
-.chek-promo-label { font-size: 9px; text-transform: uppercase; letter-spacing: .12em; }
-.chek-promo-code { font-weight: 800; font-size: 13px; letter-spacing: .08em; margin-top: 2px; }
-.chek-promo-meta { font-size: 9px; margin-top: 2px; }
-.chek-note { font-size: 10px; margin-top: 6px; }
-.chek-foot { text-align: center; margin-top: 10px; font-size: 10px; }
+.chek-rows dd { margin: 0; text-align: right; font-weight: 700; max-width: 55%; word-break: break-word; }
+.chek-discount dd { color: #000; }
+.chek-total { display: flex; justify-content: space-between; align-items: baseline; font-weight: 900; margin: 3px 0; font-size: 12pt; letter-spacing: .02em; }
+.chek-total * { font-size: 12pt; }
+.chek-total strong { text-decoration: underline; text-decoration-style: double; }
+.chek-promo { margin-top: 4px; border: 2px dashed #000; padding: 6px 4px; text-align: center; }
+.chek-promo-label { font-weight: 800; letter-spacing: .15em; }
+.chek-promo-code { font-weight: 900; font-size: 13pt; letter-spacing: .12em; margin: 3px 0; padding: 2px 0; border-top: 1px dashed #000; border-bottom: 1px dashed #000; }
+.chek-promo-code * { font-size: 13pt; }
+.chek-promo-meta { margin-top: 2px; }
+.chek-note { margin-top: 4px; font-style: italic; }
+.chek-foot { text-align: center; margin-top: 4px; }
+.chek-foot-thanks { font-weight: 800; letter-spacing: .08em; }
+.chek-foot-note { margin-top: 2px; }
+.chek-foot-meta { margin-top: 3px; font-weight: 600; letter-spacing: .04em; }
+.chek-foot-ts { margin-top: 4px; font-size: 8pt; }
+.chek-foot-ts * { font-size: 8pt; }
 `;
 
 function UnpaidPanel({
@@ -2135,37 +2187,59 @@ const cashStyles = `
 
 .chek {
   background: #fff; color: #0f172a;
-  border-radius: 6px; padding: 10px 12px; box-sizing: border-box;
-  width: 80mm; font-size: 11px; line-height: 1.4;
+  border-radius: 8px; padding: 14px 16px; box-sizing: border-box;
+  width: 80mm; font-size: 10pt; line-height: 1.45;
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  box-shadow: 0 10px 30px rgba(0,0,0,.25);
-  max-height: 88vh; overflow: auto;
+  box-shadow: 0 20px 50px rgba(0,0,0,.3);
+  max-height: 92vh; overflow: auto;
 }
-
 .chek-head { text-align: center; }
 .chek-logo { display: block; margin: 0 auto 6px; max-width: 60%; max-height: 70px; object-fit: contain; }
-.chek-clinic { font-weight: 800; letter-spacing: .08em; font-size: 1.25em; }
-.chek-clinic-sub { font-size: .85em; color: #475569; margin-top: 2px; }
-.chek-divider { border-top: 1px dashed #94a3b8; margin: 8px 0; }
+.chek-clinic { font-weight: 900; letter-spacing: .14em; font-size: 15pt; color: #0f172a; }
+.chek-clinic-sub { font-weight: 600; color: #334155; margin-top: 3px; }
+.chek-clinic-meta { color: #64748b; margin-top: 2px; font-size: 9pt; }
+.chek-divider { border-top: 1px dashed #94a3b8; margin: 7px 0; }
+.chek-divider.double {
+  border-top: 2px solid #0f172a; border-bottom: 1px dashed #94a3b8;
+  height: 2px; margin: 8px 0; padding-top: 3px;
+}
+.chek-title {
+  text-align: center; font-weight: 900; letter-spacing: .28em;
+  color: #1e293b; margin: 3px 0; font-size: 11pt;
+}
+.chek-receipt-no { text-align: center; color: #64748b; font-size: 9pt; margin-bottom: 2px; }
 .chek-rows { margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
-.chek-rows > div { display: flex; justify-content: space-between; gap: 8px; }
-.chek-rows dt { color: #475569; margin: 0; }
-.chek-rows dd { margin: 0; text-align: right; font-weight: 700; color: #0f172a; }
+.chek-rows > div { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.chek-rows dt { color: #64748b; margin: 0; }
+.chek-rows dd { margin: 0; text-align: right; font-weight: 700; color: #0f172a; max-width: 58%; word-break: break-word; }
 .chek-discount dd { color: #047857; }
 .chek-total {
   display: flex; justify-content: space-between; align-items: center;
-  font-size: 1.15em; font-weight: 800; margin-top: 4px;
+  font-weight: 900; margin: 6px 0;
+  padding: 6px 2px; border-top: 2px solid #0f172a; border-bottom: 2px solid #0f172a;
+  font-size: 12pt;
 }
-.chek-total strong { color: #1e40af; font-size: 1.15em; }
+.chek-total span { color: #1e293b; letter-spacing: .04em; }
+.chek-total strong { color: #1e40af; font-size: 13pt; letter-spacing: .02em; }
 .chek-promo {
-  margin-top: 8px; border: 1px dashed #2563eb; border-radius: 6px;
-  padding: 6px; text-align: center; background: #eff6ff;
+  margin-top: 6px; border: 2px dashed #2563eb; border-radius: 8px;
+  padding: 10px 8px; text-align: center;
+  background: linear-gradient(135deg, #eff6ff, #e0e7ff);
 }
-.chek-promo-label { font-size: .75em; color: #2563eb; text-transform: uppercase; letter-spacing: .12em; font-weight: 700; }
-.chek-promo-code { font-weight: 800; font-size: 1.1em; letter-spacing: .08em; color: #1e40af; margin-top: 2px; }
-.chek-promo-meta { font-size: .78em; color: #475569; margin-top: 2px; }
-.chek-note { font-size: .9em; color: #475569; margin-top: 6px; }
-.chek-foot { text-align: center; margin-top: 10px; font-size: .85em; color: #64748b; }
+.chek-promo-label { color: #2563eb; letter-spacing: .16em; font-weight: 800; font-size: 9pt; }
+.chek-promo-code {
+  font-weight: 900; font-size: 14pt; letter-spacing: .14em;
+  color: #1e40af; margin: 4px 0; padding: 4px 0;
+  border-top: 1px dashed #2563eb; border-bottom: 1px dashed #2563eb;
+}
+.chek-promo-meta { color: #475569; margin-top: 3px; font-size: 9pt; }
+.chek-promo-meta strong { color: #059669; font-weight: 700; }
+.chek-note { color: #475569; margin-top: 4px; font-style: italic; }
+.chek-foot { text-align: center; margin-top: 4px; color: #475569; }
+.chek-foot-thanks { font-weight: 800; color: #0f172a; letter-spacing: .08em; }
+.chek-foot-note { margin-top: 3px; color: #64748b; font-size: 9pt; }
+.chek-foot-meta { margin-top: 4px; font-weight: 600; color: #475569; font-size: 9pt; letter-spacing: .04em; }
+.chek-foot-ts { margin-top: 6px; font-size: 8pt; color: #94a3b8; }
 `;
 
 /* ---------------- Payment modal styles ---------------- */
