@@ -444,6 +444,201 @@ export function AdminFinance() {
     return b.net - a.net;
   });
 
+  // A4 PDF chop etish — barcha moliyaviy ko'rsatkichlar jadval shaklida
+  function printPdf() {
+    const now = new Date();
+    const printedAt = `${ymd(now)} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const expensesByCat = CATEGORIES.map((c) => {
+      const sum = inRangeTxns
+        .filter((t) => t.type === 'expense' && (parseDesc(t.description).category ?? 'boshqa') === c.key)
+        .reduce((s, t) => s + t.amount, 0);
+      return { label: c.label, sum };
+    }).filter((r) => r.sum > 0);
+
+    const html = `<!doctype html><html lang="uz"><head><meta charset="utf-8"/>
+<title>SSD Klinika — Moliya hisobot (${esc(range.label)})</title>
+<style>
+  @page { size: A4; margin: 14mm 12mm; }
+  * { box-sizing: border-box; }
+  body { font-family: 'DM Sans', Arial, sans-serif; color: #0f172a; font-size: 10.5pt; line-height: 1.35; margin: 0; }
+  h1 { font-size: 18pt; margin: 0 0 4pt; letter-spacing: -0.3pt; }
+  h2 { font-size: 12pt; margin: 14pt 0 6pt; border-bottom: 1.5pt solid #0f172a; padding-bottom: 3pt; }
+  .head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2.5pt solid #0f172a; padding-bottom: 8pt; margin-bottom: 10pt; }
+  .head .meta { font-size: 9pt; color: #475569; text-align: right; }
+  .head .meta strong { display: block; color: #0f172a; font-size: 11pt; margin-bottom: 2pt; }
+  .kpi { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8pt; margin-bottom: 10pt; }
+  .kpi > div { border: 1pt solid #cbd5e1; border-radius: 4pt; padding: 8pt; }
+  .kpi small { display: block; font-size: 8.5pt; color: #64748b; text-transform: uppercase; letter-spacing: 0.3pt; font-weight: 600; margin-bottom: 3pt; }
+  .kpi strong { font-size: 14pt; font-variant-numeric: tabular-nums; }
+  .kpi .ok { color: #047857; }
+  .kpi .bad { color: #b91c1c; }
+  table { width: 100%; border-collapse: collapse; margin-top: 4pt; font-size: 9.5pt; }
+  th { background: #f1f5f9; text-align: left; padding: 5pt 6pt; border: 0.5pt solid #cbd5e1; font-weight: 700; font-size: 9pt; text-transform: uppercase; letter-spacing: 0.2pt; }
+  td { padding: 4.5pt 6pt; border: 0.5pt solid #e2e8f0; font-variant-numeric: tabular-nums; }
+  tr:nth-child(even) td { background: #fafbfc; }
+  td.r, th.r { text-align: right; }
+  tfoot td { font-weight: 700; background: #e2e8f0; border-top: 1pt solid #0f172a; }
+  .footer { position: fixed; bottom: 6mm; left: 0; right: 0; font-size: 8pt; color: #94a3b8; text-align: center; }
+  .page-break { page-break-before: always; }
+  .muted { color: #64748b; }
+  .chip-in { color: #047857; font-weight: 700; }
+  .chip-out { color: #b91c1c; font-weight: 700; }
+</style></head><body>
+  <div class="head">
+    <div>
+      <h1>SSD Klinika — Moliyaviy hisobot</h1>
+      <div class="muted">Sirius Stoma Dent Diagnostika markazi · ssdclinic.uz</div>
+    </div>
+    <div class="meta">
+      <strong>${esc(range.label)}</strong>
+      <div>Davr: ${esc(range.fromDate)} — ${esc(range.toDate)}</div>
+      <div>Chop etilgan: ${esc(printedAt)}</div>
+    </div>
+  </div>
+
+  <div class="kpi">
+    <div><small>Jami kirim</small><strong class="ok">${fmt(total.income)} so'm</strong></div>
+    <div><small>Jami chiqim</small><strong class="bad">${fmt(total.expense)} so'm</strong></div>
+    <div><small>Sof foyda</small><strong class="${total.net >= 0 ? 'ok' : 'bad'}">${fmt(total.net)} so'm</strong></div>
+  </div>
+
+  <h2>1. Operatsion ko'rsatkichlar</h2>
+  <table>
+    <thead><tr><th>Ko'rsatkich</th><th class="r">Qiymat</th></tr></thead>
+    <tbody>
+      <tr><td>Xizmat daromadi (qabullardan)</td><td class="r chip-in">${fmt(ops.servicesRevenue)} so'm</td></tr>
+      <tr><td>Texnik mahsulot sotuvi</td><td class="r chip-in">${fmt(ops.techSales)} so'm</td></tr>
+      <tr><td>Shifokor ulushi (chiqim)</td><td class="r chip-out">${fmt(ops.doctorShareExpense)} so'm</td></tr>
+      <tr><td>Mahsulot tannarxi (COGS)</td><td class="r chip-out">${fmt(ops.techCogs)} so'm</td></tr>
+      <tr><td>Hodimlar oyligi (netto)</td><td class="r chip-out">${fmt(ops.medBase + ops.svcNet)} so'm</td></tr>
+      <tr><td>Qo'lda kiritilgan kirim</td><td class="r chip-in">${fmt(manualIncome)} so'm</td></tr>
+      <tr><td>Qo'lda kiritilgan chiqim</td><td class="r chip-out">${fmt(manualExpense)} so'm</td></tr>
+    </tbody>
+    <tfoot>
+      <tr><td>SOF FOYDA</td><td class="r">${fmt(total.net)} so'm</td></tr>
+    </tfoot>
+  </table>
+
+  ${expensesByCat.length > 0 ? `
+  <h2>2. Chiqimlar kategoriyalar bo'yicha</h2>
+  <table>
+    <thead><tr><th>Kategoriya</th><th class="r">Summa</th><th class="r">Ulush (%)</th></tr></thead>
+    <tbody>
+      ${expensesByCat.map((e) => `
+        <tr>
+          <td>${esc(e.label)}</td>
+          <td class="r chip-out">${fmt(e.sum)} so'm</td>
+          <td class="r">${total.expense > 0 ? ((e.sum / total.expense) * 100).toFixed(1) : '0'}%</td>
+        </tr>
+      `).join('')}
+    </tbody>
+    <tfoot><tr><td>JAMI</td><td class="r">${fmt(expensesByCat.reduce((s, e) => s + e.sum, 0))} so'm</td><td class="r">100%</td></tr></tfoot>
+  </table>` : ''}
+
+  ${topServices.length > 0 ? `
+  <h2>3. Top xizmatlar (daromad bo'yicha)</h2>
+  <table>
+    <thead><tr><th style="width:8%">#</th><th>Xizmat</th><th class="r">Soni</th><th class="r">Daromad</th></tr></thead>
+    <tbody>
+      ${topServices.map(([name, v], i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${esc(name)}</td>
+          <td class="r">${v.count}</td>
+          <td class="r chip-in">${fmt(v.revenue)} so'm</td>
+        </tr>
+      `).join('')}
+    </tbody>
+    <tfoot><tr><td colspan="3">JAMI</td><td class="r">${fmt(topServices.reduce((s, [, v]) => s + v.revenue, 0))} so'm</td></tr></tfoot>
+  </table>` : ''}
+
+  ${topProducts.length > 0 ? `
+  <h2>4. Top texnik mahsulotlar (sotuv bo'yicha)</h2>
+  <table>
+    <thead><tr><th style="width:8%">#</th><th>Mahsulot</th><th class="r">Soni</th><th class="r">Sotuv summasi</th></tr></thead>
+    <tbody>
+      ${topProducts.map(([name, v], i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${esc(name)}</td>
+          <td class="r">${v.qty}</td>
+          <td class="r chip-in">${fmt(v.sale)} so'm</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table>` : ''}
+
+  ${allEmployees.length > 0 ? `
+  <h2>5. Hodimlar bo'yicha hisob-kitob</h2>
+  <table>
+    <thead><tr><th>F.I.Sh.</th><th>Lavozim</th><th>Rol</th><th class="r">Brutto</th><th class="r">Soliq (12%)</th><th class="r">Netto</th></tr></thead>
+    <tbody>
+      ${allEmployees.map((e) => `
+        <tr>
+          <td>${esc(e.name)}</td>
+          <td class="muted">${esc(e.position)}</td>
+          <td class="muted">${esc(e.kind)}</td>
+          <td class="r">${fmt(e.gross)} so'm</td>
+          <td class="r chip-out">${fmt(e.tax)} so'm</td>
+          <td class="r chip-in">${fmt(e.net)} so'm</td>
+        </tr>
+      `).join('')}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="3">JAMI</td>
+        <td class="r">${fmt(allEmployees.reduce((s, e) => s + e.gross, 0))} so'm</td>
+        <td class="r">${fmt(allEmployees.reduce((s, e) => s + e.tax, 0))} so'm</td>
+        <td class="r">${fmt(allEmployees.reduce((s, e) => s + e.net, 0))} so'm</td>
+      </tr>
+    </tfoot>
+  </table>` : ''}
+
+  ${ledgerFiltered.length > 0 ? `
+  <h2 class="page-break">6. Tranzaksiyalar jurnal (${ledgerFiltered.length} ta)</h2>
+  <table>
+    <thead><tr><th style="width:12%">Sana</th><th>Manba</th><th>Tavsif</th><th class="r">Summa</th></tr></thead>
+    <tbody>
+      ${ledgerFiltered.slice(0, 200).map((r) => `
+        <tr>
+          <td>${esc(r.date)}</td>
+          <td class="muted">${esc(r.source)}</td>
+          <td>${esc(r.label)}${r.sub ? ` <span class="muted">· ${esc(r.sub)}</span>` : ''}</td>
+          <td class="r ${r.kind === 'income' ? 'chip-in' : 'chip-out'}">${r.kind === 'income' ? '+' : '−'}${fmt(r.amount)} so'm</td>
+        </tr>
+      `).join('')}
+    </tbody>
+    ${ledgerFiltered.length > 200 ? `<tfoot><tr><td colspan="4" class="muted">... va yana ${ledgerFiltered.length - 200} ta yozuv (to'liq ro'yxat CSV orqali)</td></tr></tfoot>` : ''}
+  </table>` : ''}
+
+  <div class="footer">SSD Klinika · Moliya hisoboti · ${esc(printedAt)} · ssdclinic.uz</div>
+  <script>
+    window.addEventListener('load', () => setTimeout(() => { window.print(); }, 180));
+  </script>
+</body></html>`;
+
+    // Yangi oyna yoki yashirin iframe orqali chop etish — asosiy UI o'zgarmaydi
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.style.visibility = 'hidden';
+    document.body.appendChild(iframe);
+    const doc = iframe.contentDocument;
+    if (!doc) return;
+    doc.open();
+    doc.write(html);
+    doc.close();
+    // Chop oynasi yopilgach iframe o'chadi
+    const cleanup = () => setTimeout(() => iframe.remove(), 500);
+    iframe.contentWindow?.addEventListener('afterprint', cleanup);
+    setTimeout(cleanup, 15000);
+  }
+
   return (
     <div className="admin-page">
       <div className="admin-page-head">
@@ -479,8 +674,8 @@ export function AdminFinance() {
               style={{ width: 120 }}
               onChange={(e) => setAnchor(new Date(Number(e.target.value || new Date().getFullYear()), 0, 1))} />
           )}
-          <button className="admin-btn admin-btn-ghost" onClick={() => window.print()}>
-            <Printer size={14} /> Chop etish
+          <button className="admin-btn admin-btn-ghost" onClick={printPdf} title="A4 formatda PDF hujjatga chop etish">
+            <Printer size={14} /> Chop etish (PDF A4)
           </button>
           <button className="admin-btn admin-btn-ghost" onClick={exportCsv}>CSV yuklab olish</button>
           <button className="admin-btn admin-btn-primary" onClick={openExpenseModal}>+ Yangi to‘lov</button>
