@@ -97,6 +97,12 @@ export function AdminPrescriptions() {
   );
 }
 
+/* ================================================================
+   RETSEPT MODAL — hujjat ko'rinishi (10 qatorli jadval)
+   ================================================================ */
+
+type MedRow = { name: string; dose: string; usage: string };
+
 function PrescriptionModal({
   existing, patients, doctors, defaultDoctor, onClose, onSaved,
 }: {
@@ -109,20 +115,30 @@ function PrescriptionModal({
 }) {
   const [patient, setPatient] = useState(existing?.patient ?? '');
   const [doctor, setDoctor] = useState(existing?.doctor ?? defaultDoctor ?? '');
-  const [meds, setMeds] = useState(existing?.meds ?? '');
   const [date, setDate] = useState(existing?.date ?? todayISO());
   const [busy, setBusy] = useState(false);
 
-  // Retsept maxsus maydonlari (hujjat shakliga mos)
-  const selectedP = patients.find((p) => p.fullName === patient);
-  const birth = selectedP?.birthDate ?? '';
-  const addr = selectedP?.address ?? '';
-  const selectedD = doctors.find((d) => d.fullName === doctor);
-  const spec = selectedD?.specialty ?? '';
-  const [diagnosis, setDiagnosis] = useState('');
-  const [notes, setNotes] = useState('');
+  // Mavjud retseptdagi dori ro'yxatini 10 ta qatorli jadvalga parslash.
+  // Format: "dori nomi | miqdori | qo'llanilishi" (vertical bar bilan ajratilgan).
+  const initRows = (): MedRow[] => {
+    const rows: MedRow[] = Array.from({ length: 10 }, () => ({ name: '', dose: '', usage: '' }));
+    if (existing?.meds) {
+      existing.meds.split('\n').slice(0, 10).forEach((line, i) => {
+        const parts = line.split('|').map((s) => s.trim());
+        rows[i] = {
+          name: parts[0] ?? line.trim(),
+          dose: parts[1] ?? '',
+          usage: parts[2] ?? '',
+        };
+      });
+    }
+    return rows;
+  };
+  const [rows, setRows] = useState<MedRow[]>(initRows);
+  const updateRow = (i: number, field: keyof MedRow, val: string) =>
+    setRows((prev) => prev.map((r, idx) => idx === i ? { ...r, [field]: val } : r));
 
-  const canSave = patient.trim() && doctor.trim() && meds.trim();
+  const canSave = patient.trim() && doctor.trim() && rows.some((r) => r.name.trim());
 
   async function save() {
     if (!canSave) return;
@@ -131,152 +147,93 @@ function PrescriptionModal({
       const name = patient.trim();
       const selected = patients.find((p) => p.fullName === name);
       const passport = (selected?.passport ?? '').replace(/\s+/g, '').toUpperCase() || existing?.patientPassport;
+      // Dori ro'yxatini bitta satrga yig'ish: "nom | miqdor | qo'llanilishi"
+      const medsStr = rows
+        .filter((r) => r.name.trim())
+        .map((r) => [r.name.trim(), r.dose.trim(), r.usage.trim()].join(' | '))
+        .join('\n');
       const common = {
         patient: name,
         patientId: selected?.id ?? existing?.patientId,
         patientPassport: passport,
         doctor: doctor.trim(),
-        meds: meds.trim() + (diagnosis ? `\n\nTashxis: ${diagnosis}` : '') + (notes ? `\n\nIzoh: ${notes}` : ''),
+        meds: medsStr,
         date,
       };
       let row: Prescription | null;
-      if (existing) {
-        row = await updatePrescription(existing.id, common);
-      } else {
-        row = await addPrescription(common);
-      }
+      if (existing) row = await updatePrescription(existing.id, common);
+      else row = await addPrescription(common);
       if (row && onSaved) onSaved(row);
       else onClose();
     } finally { setBusy(false); }
   }
 
-  // PDF chop etish — Chek (80mm × dinamik) yoki A5 (148×210mm)
-  function printDoc(kind: 'receipt' | 'a5') {
+  // PDF chop etish — rasmdagi hujjat shakliga aniq mos keluvchi A5 yoki A4
+  function printDoc(kind: 'a5' | 'a4' | 'receipt') {
     const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const medsLines = meds.split('\n').filter((l) => l.trim());
-    const rxNo = existing?.id ? existing.id.slice(-6).toUpperCase() : 'RX-' + Date.now().toString(36).toUpperCase().slice(-6);
+    const filled = rows.map((r) => ({ ...r }));
 
     const pageCss = kind === 'receipt'
-      ? `@page { size: 80mm auto; margin: 3mm; } body { width: 74mm; font-size: 9.5pt; }`
-      : `@page { size: A5; margin: 10mm 12mm; } body { font-size: 11pt; }`;
+      ? `@page { size: 80mm auto; margin: 3mm; } body { width: 74mm; font-size: 8.5pt; }`
+      : kind === 'a4'
+        ? `@page { size: A4; margin: 15mm; } body { font-size: 11pt; }`
+        : `@page { size: A5; margin: 10mm; } body { font-size: 10pt; }`;
 
     const html = `<!doctype html><html lang="uz"><head><meta charset="utf-8"/>
-<title>Retsept #${esc(rxNo)}</title>
+<title>Retsept — ${esc(patient)}</title>
 <style>
   ${pageCss}
   * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  body { font-family: 'DM Sans', Arial, sans-serif; color: #0f172a; margin: 0; line-height: 1.4; }
-  .hdr { text-align: center; padding-bottom: 6pt; border-bottom: 1.5pt solid #0f172a; margin-bottom: 8pt; }
-  .hdr h1 { margin: 0; font-size: ${kind === 'receipt' ? '12pt' : '15pt'}; letter-spacing: 0.3pt; font-weight: 800; }
-  .hdr .sub { font-size: ${kind === 'receipt' ? '7.5pt' : '9pt'}; color: #475569; margin-top: 2pt; }
-  .rx-rpno {
-    display: inline-block; background: #4f46e5; color: #fff;
-    padding: 2pt 8pt; border-radius: 3pt; font-size: ${kind === 'receipt' ? '8pt' : '9pt'};
-    font-weight: 700; margin-top: 4pt; letter-spacing: 0.5pt;
-  }
-  .sec { margin: ${kind === 'receipt' ? '6pt' : '8pt'} 0; }
-  .sec-title { font-size: ${kind === 'receipt' ? '8pt' : '9pt'}; font-weight: 700;
-    color: #64748b; text-transform: uppercase; letter-spacing: 0.5pt; margin-bottom: 3pt; border-bottom: 0.3pt dashed #cbd5e1; padding-bottom: 2pt; }
-  .kv { display: grid; grid-template-columns: 1fr; gap: 2pt; }
-  .kv .row { display: flex; gap: 6pt; font-size: ${kind === 'receipt' ? '9pt' : '10.5pt'}; }
-  .kv .k { color: #64748b; min-width: ${kind === 'receipt' ? '22mm' : '28mm'}; font-weight: 600; }
-  .kv .v { color: #0f172a; font-weight: 500; flex: 1; }
-  .rp-wrap {
-    border: 1pt solid #0f172a; border-radius: 3pt;
-    padding: ${kind === 'receipt' ? '6pt' : '10pt'};
-    margin: 4pt 0 6pt;
-    background: #fafafa;
-  }
-  .rp-mark {
-    font-size: ${kind === 'receipt' ? '20pt' : '26pt'}; font-weight: 900;
-    font-style: italic; line-height: 1; color: #4f46e5;
-    float: left; margin-right: 6pt; margin-bottom: 2pt;
-  }
-  .rp-title { font-size: ${kind === 'receipt' ? '9.5pt' : '11pt'}; font-weight: 700; margin-bottom: 4pt; }
-  .meds-list { list-style: none; padding: 0; margin: 0; counter-reset: medc; }
-  .meds-list li {
-    counter-increment: medc;
-    padding: 3pt 0 3pt 14pt;
-    position: relative;
-    font-size: ${kind === 'receipt' ? '9.5pt' : '11pt'};
-    border-bottom: 0.3pt dashed #e2e8f0;
-  }
-  .meds-list li:last-child { border-bottom: 0; }
-  .meds-list li::before {
-    content: counter(medc) ".";
-    position: absolute; left: 0; top: 3pt;
-    font-weight: 700; color: #4f46e5;
-  }
-  .sign {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 8pt;
-    margin-top: ${kind === 'receipt' ? '8pt' : '14pt'};
-    font-size: ${kind === 'receipt' ? '8.5pt' : '10pt'};
-  }
-  .sign .box { border-top: 0.5pt solid #0f172a; padding-top: 3pt; }
-  .sign .box .lbl { color: #64748b; font-size: ${kind === 'receipt' ? '7.5pt' : '8.5pt'}; }
-  .sign .box .nm { font-weight: 700; margin-top: 2pt; }
-  .ftr {
-    margin-top: ${kind === 'receipt' ? '10pt' : '16pt'};
-    text-align: center;
-    font-size: ${kind === 'receipt' ? '7pt' : '8pt'};
-    color: #94a3b8;
-    border-top: 0.3pt dashed #cbd5e1;
-    padding-top: 4pt;
-  }
+  body { font-family: 'DM Sans', Arial, sans-serif; color: #0f172a; margin: 0; line-height: 1.35; }
+  .title { text-align: center; font-weight: 800; font-size: ${kind === 'receipt' ? '11pt' : '15pt'}; margin-bottom: 2mm; }
+  .title .red { color: #dc2626; }
+  .title .green { color: #15803d; }
+  .subtitle { text-align: center; font-weight: 700; font-size: ${kind === 'receipt' ? '9pt' : '11pt'}; margin-bottom: 4mm; letter-spacing: 0.3pt; }
+  .meta { display: flex; justify-content: space-between; gap: 4mm; font-size: ${kind === 'receipt' ? '8pt' : '10pt'}; margin-bottom: 3mm; flex-wrap: wrap; }
+  .meta span b { font-weight: 700; }
+  table.rx { width: 100%; border-collapse: collapse; font-size: ${kind === 'receipt' ? '8pt' : '10pt'}; }
+  table.rx th, table.rx td { border: 0.5pt solid #0f172a; padding: ${kind === 'receipt' ? '1.5mm' : '2mm'}; vertical-align: middle; }
+  table.rx th { background: #f1f5f9; font-weight: 700; text-align: center; }
+  table.rx td.n { text-align: center; width: ${kind === 'receipt' ? '8mm' : '12mm'}; font-weight: 600; }
+  table.rx td.name { width: 44%; }
+  table.rx td.dose, table.rx td.usage { width: 28%; }
+  .sign { display: flex; justify-content: space-between; align-items: flex-end; margin-top: ${kind === 'receipt' ? '6mm' : '12mm'}; font-size: ${kind === 'receipt' ? '8pt' : '10pt'}; }
+  .sign .left { display: flex; gap: 4mm; align-items: baseline; }
+  .sign .line { display: inline-block; min-width: ${kind === 'receipt' ? '20mm' : '40mm'}; border-bottom: 0.5pt solid #0f172a; height: ${kind === 'receipt' ? '4mm' : '6mm'}; }
+  .sign .right { font-weight: 700; }
 </style></head><body>
-  <div class="hdr">
-    <h1>SSD KLINIKA</h1>
-    <div class="sub">Sirius Stoma Dent Diagnostika markazi</div>
-    <div class="sub">ssdclinic.uz · Shavat, Jaloliddin Mangʻuberdi 8-uy</div>
-    <div class="rx-rpno">RETSEPT № ${esc(rxNo)}</div>
+  <div class="title"><span class="red">SSD</span> <span class="green">DIAGNOSTIKA MARKAZI</span></div>
+  <div class="subtitle">DORILAR RETSEPTI</div>
+  <div class="meta">
+    <span><b>Bemor:</b> ${esc(patient)}</span>
+    <span><b>Shifokor:</b> ${esc(doctor)}</span>
+    <span><b>Sana:</b> ${esc(date)}</span>
   </div>
-
-  <div class="sec">
-    <div class="sec-title">Bemor</div>
-    <div class="kv">
-      <div class="row"><span class="k">F.I.Sh.</span><span class="v">${esc(patient) || '____________________'}</span></div>
-      ${birth ? `<div class="row"><span class="k">Tug'ilgan sana</span><span class="v">${esc(birth)}</span></div>` : ''}
-      ${addr ? `<div class="row"><span class="k">Manzil</span><span class="v">${esc(addr)}</span></div>` : ''}
-      ${selectedP?.phone ? `<div class="row"><span class="k">Telefon</span><span class="v">${esc(selectedP.phone)}</span></div>` : ''}
-      <div class="row"><span class="k">Sana</span><span class="v">${esc(date)}</span></div>
-    </div>
-  </div>
-
-  ${diagnosis ? `<div class="sec">
-    <div class="sec-title">Tashxis</div>
-    <div style="font-size: ${kind === 'receipt' ? '9.5pt' : '11pt'}; font-weight: 500;">${esc(diagnosis)}</div>
-  </div>` : ''}
-
-  <div class="rp-wrap">
-    <div class="rp-mark">Rp.</div>
-    <div class="rp-title">Tayinlangan dori-darmonlar:</div>
-    <ol class="meds-list">
-      ${medsLines.map((line) => `<li>${esc(line.replace(/^[•·\-\d.\s]+/, ''))}</li>`).join('')}
-    </ol>
-  </div>
-
-  ${notes ? `<div class="sec">
-    <div class="sec-title">Qo'shimcha ko'rsatma</div>
-    <div style="font-size: ${kind === 'receipt' ? '9pt' : '10.5pt'};">${esc(notes).replace(/\n/g, '<br>')}</div>
-  </div>` : ''}
-
+  <table class="rx">
+    <thead>
+      <tr>
+        <th style="width:${kind === 'receipt' ? '8mm' : '12mm'}">#</th>
+        <th>Dori nomi</th>
+        <th>Miqdori</th>
+        <th>Qo'llanilishi</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${filled.map((r, i) => `
+        <tr>
+          <td class="n">${i + 1}</td>
+          <td class="name">${esc(r.name)}</td>
+          <td class="dose">${esc(r.dose)}</td>
+          <td class="usage">${esc(r.usage)}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table>
   <div class="sign">
-    <div class="box">
-      <div class="lbl">Tayinlagan shifokor</div>
-      <div class="nm">${esc(doctor) || '________'}</div>
-      ${spec ? `<div class="lbl" style="margin-top:1pt">${esc(spec)}</div>` : ''}
-    </div>
-    <div class="box">
-      <div class="lbl">Imzo / muhr</div>
-      <div style="height: ${kind === 'receipt' ? '18pt' : '28pt'}"></div>
-    </div>
+    <div class="left"><span>Shifokor imzosi:</span><span class="line"></span></div>
+    <div class="right">${esc(doctor)}</div>
   </div>
-
-  <div class="ftr">
-    SSD Klinika · ssdclinic.uz · Retsept № ${esc(rxNo)} · ${esc(date)}
-    <br>Dorilarni shifokor ko'rsatmasi bo'yicha qabul qiling.
-  </div>
-  <script>window.addEventListener('load',()=>setTimeout(()=>window.print(),150));</script>
+  <script>window.addEventListener('load',()=>setTimeout(()=>window.print(),180));</script>
 </body></html>`;
 
     const iframe = document.createElement('iframe');
@@ -294,107 +251,90 @@ function PrescriptionModal({
     <div className="rx-backdrop" onClick={onClose}>
       <style>{css}</style>
       <div className="rx-modal rx-modal-doc" onClick={(e) => e.stopPropagation()}>
+        {/* Modal head */}
         <div className="rx-head">
           <div className="rx-head-left">
             <div className="rx-head-ico"><PillIcon size={20} /></div>
             <div>
-              <h2>{existing ? 'Retseptni tahrirlash' : 'Yangi retsept — hujjat shakli'}</h2>
-              <p>Har maydon chop etilgan retseptning tegishli katagiga tushadi</p>
+              <h2>{existing ? 'Retseptni tahrirlash' : 'Yangi retsept'}</h2>
+              <p>Hujjat shakli — har dori alohida qatorga yoziladi</p>
             </div>
           </div>
           <button className="rx-close" onClick={onClose}><X size={18} /></button>
         </div>
 
-        <div className="rx-body rx-doc">
-          {/* Hujjat shakli — real retseptga o'xshash */}
-          <div className="rx-doc-sheet">
-            <div className="rx-doc-hdr">
-              <div className="rx-doc-brand">
-                <strong>SSD KLINIKA</strong>
-                <small>Sirius Stoma Dent Diagnostika markazi</small>
-                <small>ssdclinic.uz</small>
-              </div>
-              <div className="rx-doc-rxno">RETSEPT</div>
-            </div>
+        {/* Modal body — rasm bo'yicha hujjat shakli */}
+        <div className="rx-sheet-scroll">
+          <div className="rx-sheet">
+            <div className="rx-sheet-title"><span className="red">SSD</span> <span className="green">DIAGNOSTIKA MARKAZI</span></div>
+            <div className="rx-sheet-sub">DORILAR RETSEPTI</div>
 
-            <div className="rx-doc-row">
-              <div className="rx-doc-cell rx-doc-cell-full">
-                <label>Bemor F.I.Sh. <span className="rx-req">*</span></label>
-                <input list="rx-patients" value={patient} onChange={(e) => setPatient(e.target.value)} placeholder="Ism Familiya Otasi ismi" />
+            {/* Meta qator: Bemor, Shifokor, Sana */}
+            <div className="rx-sheet-meta">
+              <div className="rx-meta-item">
+                <label>Bemor:</label>
+                <input list="rx-patients" value={patient} onChange={(e) => setPatient(e.target.value)} placeholder="F.I.Sh" />
                 <datalist id="rx-patients">
                   {patients.filter((p) => !p.archived).map((p) => (
                     <option key={p.id} value={p.fullName}>{p.phone ?? ''}</option>
                   ))}
                 </datalist>
               </div>
-            </div>
-
-            <div className="rx-doc-row">
-              <div className="rx-doc-cell">
-                <label><Calendar size={11} /> Sana</label>
-                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-              </div>
-              <div className="rx-doc-cell">
-                <label>Tug'ilgan sana</label>
-                <input type="text" value={birth || '—'} readOnly placeholder="Bemor tanlanganda ko'rsatiladi" />
-              </div>
-            </div>
-
-            <div className="rx-doc-row">
-              <div className="rx-doc-cell rx-doc-cell-full">
-                <label>Tashxis</label>
-                <input value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} placeholder="Masalan: J02.0 Streptokokk faringiti" />
-              </div>
-            </div>
-
-            <div className="rx-doc-rp">
-              <div className="rx-doc-rp-mark">Rp.</div>
-              <div className="rx-doc-cell rx-doc-cell-full" style={{ flex: 1 }}>
-                <label>Dori-darmonlar (har qator — bitta dori) <span className="rx-req">*</span></label>
-                <textarea
-                  value={meds}
-                  onChange={(e) => setMeds(e.target.value)}
-                  placeholder={"Paratsetamol 500 mg — 3 marta kuniga, 5 kun\nAmoksitsillin 250 mg — 2 marta kuniga, 7 kun\nKetonal 100 mg — 2 marta kuniga, 3 kun"}
-                  rows={5}
-                />
-                <small className="rx-hint">Ro'yxat chop etilganda avtomatik 1, 2, 3... deb raqamlanadi</small>
-              </div>
-            </div>
-
-            <div className="rx-doc-row">
-              <div className="rx-doc-cell rx-doc-cell-full">
-                <label>Qo'shimcha ko'rsatma (ixtiyoriy)</label>
-                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Ovqatdan keyin iste'mol qiling..." />
-              </div>
-            </div>
-
-            <div className="rx-doc-row">
-              <div className="rx-doc-cell">
-                <label><Stethoscope size={11} /> Shifokor <span className="rx-req">*</span></label>
-                <input list="rx-doctors" value={doctor} onChange={(e) => setDoctor(e.target.value)} placeholder="Dr. ..." />
+              <div className="rx-meta-item">
+                <label>Shifokor:</label>
+                <input list="rx-doctors" value={doctor} onChange={(e) => setDoctor(e.target.value)} placeholder="Shifokor nomi" />
                 <datalist id="rx-doctors">
                   {doctors.map((d) => <option key={d.id} value={d.fullName}>{d.specialty}</option>)}
                 </datalist>
               </div>
-              <div className="rx-doc-cell">
-                <label>Mutaxassislik</label>
-                <input type="text" value={spec || '—'} readOnly />
+              <div className="rx-meta-item rx-meta-item-sm">
+                <label>Sana:</label>
+                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
               </div>
+            </div>
+
+            {/* Dori-darmonlar jadval — 10 qator */}
+            <table className="rx-sheet-table">
+              <thead>
+                <tr>
+                  <th style={{ width: 40 }}>#</th>
+                  <th>Dori nomi</th>
+                  <th style={{ width: 140 }}>Miqdori</th>
+                  <th style={{ width: 180 }}>Qo'llanilishi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r, i) => (
+                  <tr key={i}>
+                    <td className="rx-row-n">{i + 1}</td>
+                    <td><input value={r.name} onChange={(e) => updateRow(i, 'name', e.target.value)} placeholder="" /></td>
+                    <td><input value={r.dose} onChange={(e) => updateRow(i, 'dose', e.target.value)} placeholder="" /></td>
+                    <td><input value={r.usage} onChange={(e) => updateRow(i, 'usage', e.target.value)} placeholder="" /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Imzo qator */}
+            <div className="rx-sheet-sign">
+              <div className="rx-sign-left">
+                <span>Shifokor imzosi:</span>
+                <span className="rx-sign-line" />
+              </div>
+              <div className="rx-sign-right">{doctor || <em style={{ color: '#94a3b8' }}>Shifokor</em>}</div>
             </div>
           </div>
         </div>
 
+        {/* Foot — tugmalar */}
         <div className="rx-foot">
           <button className="rx-btn rx-btn-ghost" onClick={onClose}>Bekor</button>
           <div style={{ flex: 1 }} />
           {canSave && (
             <>
-              <button className="rx-btn rx-btn-ghost" onClick={() => printDoc('receipt')} title="Chek qog'ozi (80mm) ga chop etish">
-                🧾 Chek
-              </button>
-              <button className="rx-btn rx-btn-ghost" onClick={() => printDoc('a5')} title="A5 qog'oz (148×210mm)">
-                📄 A5 PDF
-              </button>
+              <button className="rx-btn rx-btn-ghost" onClick={() => printDoc('receipt')} title="Chek qog'ozi (80mm)">🧾 Chek</button>
+              <button className="rx-btn rx-btn-ghost" onClick={() => printDoc('a5')} title="A5 qog'oz">📄 A5 PDF</button>
+              <button className="rx-btn rx-btn-ghost" onClick={() => printDoc('a4')} title="A4 qog'oz">📄 A4 PDF</button>
             </>
           )}
           <button className="rx-btn rx-btn-primary" disabled={!canSave || busy} onClick={save}>
@@ -531,4 +471,148 @@ const css = `
   box-shadow: 0 8px 22px -8px rgba(168,85,247,.6); }
 .rx-btn-primary:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
 .rx-btn-primary:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ====== Retsept hujjati — rasm bo'yicha ====== */
+.rx-modal-doc { max-width: 720px; }
+.rx-sheet-scroll {
+  background: #f1f5f9;
+  padding: 20px;
+  max-height: 72vh;
+  overflow-y: auto;
+}
+.rx-sheet {
+  background: #fff;
+  padding: 24px 28px;
+  border-radius: 6px;
+  box-shadow: 0 2px 12px rgba(15,23,42,.08);
+  font-family: 'DM Sans', Arial, sans-serif;
+  color: #0f172a;
+}
+.rx-sheet-title {
+  text-align: center;
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: 0.4px;
+  margin-bottom: 4px;
+}
+.rx-sheet-title .red { color: #dc2626; }
+.rx-sheet-title .green { color: #15803d; }
+.rx-sheet-sub {
+  text-align: center;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  color: #0f172a;
+  margin-bottom: 16px;
+}
+.rx-sheet-meta {
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.rx-meta-item {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex: 1 1 30%;
+  min-width: 160px;
+}
+.rx-meta-item-sm { flex: 0 1 180px; }
+.rx-meta-item label {
+  font-weight: 700;
+  font-size: 13px;
+  color: #0f172a;
+  white-space: nowrap;
+}
+.rx-meta-item input {
+  flex: 1;
+  border: 0;
+  border-bottom: 1px dashed #94a3b8;
+  outline: none;
+  padding: 2px 4px;
+  font-size: 13px;
+  background: transparent;
+  font-family: inherit;
+  color: #0f172a;
+}
+.rx-meta-item input:focus { border-bottom-color: #4f46e5; border-bottom-style: solid; }
+
+.rx-sheet-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 4px;
+  font-size: 13px;
+}
+.rx-sheet-table th, .rx-sheet-table td {
+  border: 1px solid #0f172a;
+  padding: 0;
+  vertical-align: middle;
+}
+.rx-sheet-table th {
+  background: #f1f5f9;
+  padding: 7px 8px;
+  font-weight: 700;
+  text-align: center;
+  font-size: 12.5px;
+}
+.rx-sheet-table .rx-row-n {
+  text-align: center;
+  font-weight: 700;
+  padding: 6px 4px;
+  color: #334155;
+}
+.rx-sheet-table td input {
+  width: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  padding: 7px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  color: #0f172a;
+  min-height: 32px;
+}
+.rx-sheet-table td input:focus {
+  background: #eff6ff;
+  box-shadow: inset 0 0 0 1.5px #4f46e5;
+}
+
+.rx-sheet-sign {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 20px;
+  padding-top: 8px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.rx-sign-left {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 13px;
+  color: #0f172a;
+}
+.rx-sign-line {
+  display: inline-block;
+  min-width: 100px;
+  border-bottom: 1px solid #0f172a;
+  height: 14px;
+}
+.rx-sign-right {
+  font-weight: 700;
+  font-size: 13px;
+  color: #0f172a;
+}
+
+@media (max-width: 640px) {
+  .rx-sheet { padding: 16px 14px; }
+  .rx-sheet-title { font-size: 16px; }
+  .rx-sheet-sub { font-size: 12px; }
+  .rx-meta-item { flex: 1 1 100%; }
+  .rx-sheet-table { font-size: 11px; }
+  .rx-sheet-table td input { padding: 6px 7px; font-size: 11.5px; min-height: 28px; }
+}
 `;
