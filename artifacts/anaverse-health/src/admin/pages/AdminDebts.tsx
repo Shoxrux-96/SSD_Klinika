@@ -782,48 +782,220 @@ function DebtHistoryModal({ debt, lines, onClose }: {
   lines: PaidLine[];
   onClose: () => void;
 }) {
-  const total = lines.reduce((s, l) => s + l.amount, 0);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
+  }, [onClose]);
+
+  const sorted = [...lines].sort((a, b) => b.date - a.date);
+  const total = sorted.reduce((s, l) => s + l.amount, 0);
+  const methodLabel = (m: Method) => m === 'naqd' ? 'Naqd' : m === 'plastik' ? 'Karta' : 'Oʻtkazma';
+  const methodColor = (m: Method) =>
+    m === 'naqd'    ? { bg: '#ecfdf5', fg: '#047857', bd: '#a7f3d0' } :
+    m === 'plastik' ? { bg: '#eef2ff', fg: '#4f46e5', bd: '#c7d2fe' } :
+                      { bg: '#fef3c7', fg: '#b45309', bd: '#fde68a' };
+
   return (
-    <div className="pay-backdrop" onClick={onClose}>
-      <div className="pay-modal pp-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560 }}>
-        <div className="pay-head">
-          <div className="pay-head-ico" style={{ background: '#ecfdf5', color: '#047857' }}>
-            <Receipt size={18} />
+    <div className="dpm-backdrop" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="dpm-modal dhm-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="dpm-head dhm-head">
+          <div className="dpm-head-top">
+            <div className="dpm-head-ico" style={{ background: 'linear-gradient(135deg, #d1fae5, #a7f3d0)', color: '#047857' }}>
+              <Receipt size={18} />
+            </div>
+            <div className="dpm-head-text">
+              <h2>{debt.patient} — toʻlov tarixi</h2>
+              <p>Qarz uchun qilingan barcha toʻlovlar</p>
+            </div>
+            <button className="dpm-close" onClick={onClose} aria-label="Yopish"><X size={16} /></button>
           </div>
-          <div>
-            <h2>{debt.patient} — toʻlov tarixi</h2>
-            <p>Qarz uchun qilingan barcha toʻlovlar</p>
+
+          <div className="dhm-summary">
+            <div className="dhm-summary-item">
+              <small>Toʻlovlar soni</small>
+              <strong>{sorted.length}</strong>
+            </div>
+            <div className="dhm-summary-item dhm-summary-total">
+              <small>Jami toʻlangan</small>
+              <strong>{fmt(total)}</strong>
+            </div>
           </div>
-          <button className="pay-close" onClick={onClose}><X size={16} /></button>
         </div>
-        <div style={{ padding: 20 }}>
-          {lines.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 30, color: '#64748b' }}>
-              <AlertCircle size={28} /><br /> Toʻlovlar hali yoʻq
+
+        <div className="dhm-body">
+          {sorted.length === 0 ? (
+            <div className="dhm-empty">
+              <div className="dhm-empty-ico"><AlertCircle size={28} /></div>
+              <div className="dhm-empty-title">Toʻlovlar hali yoʻq</div>
+              <div className="dhm-empty-sub">Birinchi toʻlov qilingach, bu yerda koʻrinadi</div>
             </div>
           ) : (
-            <table className="admin-table" style={{ fontSize: 13 }}>
-              <thead><tr><th>#</th><th>Sana</th><th>Usul</th><th className="t-right">Summa</th><th>Izoh</th></tr></thead>
-              <tbody>
-                {lines.sort((a, b) => b.date - a.date).map((l, i) => (
-                  <tr key={l.id}>
-                    <td>{i + 1}</td>
-                    <td>{new Date(l.date).toLocaleDateString('uz-UZ')}</td>
-                    <td>{l.method === 'naqd' ? 'Naqd' : l.method === 'plastik' ? 'Karta' : 'Oʻtkazma'}</td>
-                    <td className="t-right"><strong>{fmt(l.amount)}</strong></td>
-                    <td style={{ color: '#64748b' }}>{l.note || '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr><td colSpan={3}><strong>JAMI</strong></td><td className="t-right"><strong>{fmt(total)}</strong></td><td /></tr>
-              </tfoot>
-            </table>
+            <ol className="dhm-list">
+              {sorted.map((l, i) => {
+                const c = methodColor(l.method);
+                return (
+                  <li key={l.id} className="dhm-item">
+                    <div className="dhm-item-num">{sorted.length - i}</div>
+                    <div className="dhm-item-main">
+                      <div className="dhm-item-top">
+                        <span className="dhm-date"><Clock size={11} /> {new Date(l.date).toLocaleDateString('uz-UZ', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                        <span className="dhm-method" style={{ background: c.bg, color: c.fg, borderColor: c.bd }}>
+                          {methodLabel(l.method)}
+                        </span>
+                      </div>
+                      {l.note && <div className="dhm-note">{l.note}</div>}
+                    </div>
+                    <div className="dhm-item-amount">{fmt(l.amount)}</div>
+                  </li>
+                );
+              })}
+            </ol>
           )}
         </div>
+
+        {sorted.length > 0 && (
+          <div className="dhm-foot">
+            <span>JAMI</span>
+            <strong>{fmt(total)}</strong>
+          </div>
+        )}
       </div>
+      <style>{historyStyles}</style>
     </div>
   );
 }
+
+const historyStyles = `
+.dhm-modal { max-width: 560px; }
+.dhm-head { padding-bottom: 14px; }
+.dhm-summary {
+  margin-top: 14px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+}
+.dhm-summary-item {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 12px;
+  padding: 10px 14px;
+  backdrop-filter: blur(8px);
+}
+.dhm-summary-item small {
+  display: block;
+  color: #64748b; font-size: 11px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.dhm-summary-item strong {
+  display: block; margin-top: 3px;
+  font-size: 18px; font-weight: 700; color: #0f172a;
+  letter-spacing: -0.015em;
+  font-variant-numeric: tabular-nums;
+}
+.dhm-summary-total strong {
+  background: linear-gradient(135deg, #059669, #10b981);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+.dhm-body {
+  padding: 16px 22px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.dhm-empty {
+  text-align: center;
+  padding: 40px 20px;
+}
+.dhm-empty-ico {
+  width: 56px; height: 56px; margin: 0 auto 12px;
+  border-radius: 16px;
+  background: #f6f8fb; color: #94a3b8;
+  display: grid; place-items: center;
+}
+.dhm-empty-title { font-size: 14px; font-weight: 600; color: #0f172a; }
+.dhm-empty-sub { margin-top: 4px; font-size: 12.5px; color: #64748b; }
+
+.dhm-list {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.dhm-item {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid #e4e9f1;
+  border-radius: 12px;
+  transition: transform .15s, box-shadow .15s, border-color .15s;
+}
+.dhm-item:hover {
+  transform: translateY(-1px);
+  border-color: #cfd6e3;
+  box-shadow: 0 6px 16px -6px rgba(15, 23, 42, 0.1);
+}
+.dhm-item-num {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+  color: #4f46e5;
+  display: grid; place-items: center;
+  font-size: 12px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.dhm-item-main { min-width: 0; }
+.dhm-item-top {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.dhm-date {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12.5px; color: #475569; font-weight: 500;
+}
+.dhm-method {
+  display: inline-flex; align-items: center;
+  font-size: 11px; font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.dhm-note {
+  margin-top: 4px;
+  font-size: 12px; color: #64748b;
+  overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.dhm-item-amount {
+  font-size: 14px; font-weight: 700;
+  color: #047857;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.dhm-foot {
+  padding: 14px 22px 18px;
+  border-top: 1px solid #e4e9f1;
+  background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.dhm-foot span {
+  font-size: 11.5px; font-weight: 700;
+  color: #047857; letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.dhm-foot strong {
+  font-size: 18px; font-weight: 700; color: #047857;
+  letter-spacing: -0.015em;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 420px) {
+  .dhm-summary { grid-template-columns: 1fr; }
+  .dhm-body { padding-left: 16px; padding-right: 16px; }
+  .dhm-foot { padding-left: 16px; padding-right: 16px; }
+}
+`;
 
 export default AdminDebts;
