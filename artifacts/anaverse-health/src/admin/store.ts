@@ -427,25 +427,29 @@ export async function setEmployeeAssignments(employeeId: string, serviceIds: str
 export async function refreshAll() { await refetchAll(); }
 
 // --- Queue ticket (chek) ---
+// Yashirin iframe orqali chop etiladi — popup blocker buzmaydi.
+// Avtomatik chaqiriladi `setAppointmentStatus('keldi')` paytida, shuningdek
+// Navbat sahifasidagi "Chek chop etish" tugmasidan ham ishlatiladi.
 export function printQueueTicket(q: QueueItem) {
   if (typeof window === 'undefined') return;
   const now = new Date();
   const date = now.toLocaleDateString('uz-UZ');
   const time = now.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
+  const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const html = `<!doctype html>
-<html lang="uz"><head><meta charset="utf-8"><title>Navbat ${q.number}</title>
+<html lang="uz"><head><meta charset="utf-8"><title>Navbat ${esc(q.number)}</title>
 <style>
   @page { size: 80mm auto; margin: 0; }
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   html, body { margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: #000; background: #fff; }
-  .ticket { width: 80mm; padding: 10px 12px 18px; }
+  .ticket { width: 74mm; padding: 10px 12px 18px; margin: 0 auto; }
   .brand { text-align: center; font-size: 15px; font-weight: 800; letter-spacing: 2px; padding: 4px 0 6px; border-bottom: 2px dashed #000; }
   .brand small { display: block; font-weight: 500; font-size: 10px; letter-spacing: 1px; margin-top: 2px; }
   .label { text-align: center; font-size: 10px; letter-spacing: 3px; color: #333; margin-top: 10px; text-transform: uppercase; }
   .num { text-align: center; font-size: 72px; font-weight: 900; line-height: 1; margin: 6px 0 8px; letter-spacing: -2px; font-variant-numeric: tabular-nums; }
   .info { font-size: 12px; line-height: 1.6; border-top: 1px dashed #333; border-bottom: 1px dashed #333; padding: 8px 2px; }
   .row { display: flex; justify-content: space-between; gap: 8px; }
-  .row strong { font-weight: 700; }
+  .row strong { font-weight: 700; text-align: right; max-width: 60%; }
   .foot { text-align: center; font-size: 10px; margin-top: 10px; color: #333; }
   .foot b { font-size: 11px; color: #000; }
 </style></head>
@@ -453,21 +457,26 @@ export function printQueueTicket(q: QueueItem) {
   <div class="ticket">
     <div class="brand">SSD KLINIKA<small>Navbat chek — ticket</small></div>
     <div class="label">Sizning navbatingiz</div>
-    <div class="num">${q.number}</div>
+    <div class="num">${esc(q.number)}</div>
     <div class="info">
-      <div class="row"><span>Bemor:</span><strong>${q.patient}</strong></div>
-      <div class="row"><span>Shifokor:</span><strong>${q.doctor}</strong></div>
-      <div class="row"><span>Xizmat:</span><strong>${q.service}</strong></div>
-      <div class="row"><span>Sana:</span><strong>${date}</strong></div>
-      <div class="row"><span>Vaqt:</span><strong>${time}</strong></div>
+      <div class="row"><span>Bemor:</span><strong>${esc(q.patient)}</strong></div>
+      <div class="row"><span>Shifokor:</span><strong>${esc(q.doctor)}</strong></div>
+      <div class="row"><span>Xizmat:</span><strong>${esc(q.service)}</strong></div>
+      <div class="row"><span>Sana:</span><strong>${esc(date)}</strong></div>
+      <div class="row"><span>Vaqt:</span><strong>${esc(time)}</strong></div>
     </div>
     <div class="foot">Iltimos, <b>TV ekrandagi</b> raqamingizni kuzatib boring.<br/>Sabringiz uchun rahmat!</div>
   </div>
-  <script>window.addEventListener('load', () => { setTimeout(() => { window.print(); setTimeout(() => window.close(), 500); }, 200); });<\/script>
+  <script>window.addEventListener('load',()=>setTimeout(()=>window.print(),180));</script>
 </body></html>`;
-  const w = window.open('', 'queue-ticket', 'width=320,height=640');
-  if (!w) return;
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
+
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+  document.body.appendChild(iframe);
+  const d = iframe.contentDocument;
+  if (!d) { iframe.remove(); return; }
+  d.open(); d.write(html); d.close();
+  const cleanup = () => setTimeout(() => iframe.remove(), 600);
+  iframe.contentWindow?.addEventListener('afterprint', cleanup);
+  setTimeout(cleanup, 20000);
 }

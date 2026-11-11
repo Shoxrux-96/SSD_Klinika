@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { CheckCircle2, Clock3, DoorOpen, Monitor, Phone, Trash2, UserCheck } from 'lucide-react';
-import { removeFromQueue, setQueueStatus, useQueue, type QueueItem } from '../store';
+import { CheckCircle2, Clock3, DoorOpen, Monitor, Phone, Printer, Trash2, UserCheck } from 'lucide-react';
+import { printQueueTicket, removeFromQueue, setQueueStatus, useQueue, type QueueItem } from '../store';
 import { usePagination, TablePagination } from '../components/TablePagination';
 import { TvScreen } from '../components/TvScreen';
 
@@ -63,6 +63,15 @@ function QueueStatusActions({ item }: { item: QueueItem }) {
           <CheckCircle2 size={14} />
         </button>
       )}
+      {/* Chek chop etish — har doim mumkin (navbat talonini qayta chop etish) */}
+      <button
+        className="admin-icon-btn sm"
+        onClick={() => printQueueTicket(item)}
+        title="Navbat chekini chop etish"
+        aria-label="Chekni chop etish"
+      >
+        <Printer size={14} />
+      </button>
       {/* Qo'ng'iroq — jonli bemor bilan aloqa (hamma statusda) */}
       <button
         className="admin-icon-btn sm warn"
