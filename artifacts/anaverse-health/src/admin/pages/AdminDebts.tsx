@@ -911,6 +911,7 @@ function DebtHistoryModal({ debt, lines, onClose }: {
           </div>
         )}
       </div>
+      <style>{debtPayStyles}</style>
       <style>{historyStyles}</style>
     </div>
   );
