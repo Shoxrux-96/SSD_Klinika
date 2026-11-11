@@ -8,10 +8,8 @@ import {
   ChevronRight,
   Clock,
   LayoutGrid,
-  Lock,
   Plus,
   Table as TableIcon,
-  UserX,
   X,
   XCircle,
 } from 'lucide-react';
@@ -52,11 +50,13 @@ const STATUS_LABEL: Record<Status, string> = {
   kutilmoqda: 'kutilmoqda',
   keldi: 'keldi',
   bekor: 'bekor qilindi',
-  kelmadi: 'kelmadi',
+  kechikdi: 'kechikdi',
+  kelmadi: 'kechikdi', // eski yozuvlar uchun ham "kechikdi" ko'rsatiladi
 };
 
 function statusCls(s: Status) {
-  return s === 'keldi' ? 'ok' : s === 'bekor' ? 'danger' : s === 'kelmadi' ? 'missed' : 'wait';
+  return s === 'keldi' ? 'ok' : s === 'bekor' ? 'danger'
+    : (s === 'kechikdi' || s === 'kelmadi') ? 'missed' : 'wait';
 }
 
 type ViewMode = 'calendar' | 'table';
@@ -268,39 +268,19 @@ function statusChip(s: Status) {
   return <span className={`admin-chip chip-${cls}`}>{STATUS_LABEL[s]}</span>;
 }
 
-// 1 kunlik grace: qabul kuni + 24 soat davomida status tahrir qilinadi, keyin bloklanadi.
-const SLOT_MINUTES = 30;
-const GRACE_MS = 24 * 60 * 60 * 1000; // 1 kun
-
-function slotLockMs(date: string, time: string): number {
-  const [h, m] = time.split(':').map(Number);
-  const [y, mo, d] = date.split('-').map(Number);
-  const start = new Date(y, (mo ?? 1) - 1, d ?? 1, h ?? 0, m ?? 0, 0, 0);
-  return start.getTime() + SLOT_MINUTES * 60_000 + GRACE_MS;
-}
-
-function useNow(intervalMs = 30_000): number {
-  const [now, setNow] = useState<number>(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), intervalMs);
-    return () => clearInterval(id);
-  }, [intervalMs]);
-  return now;
-}
+// Vaqt bo'yicha blok olib tashlandi — status istalgan vaqtda o'zgartirilishi mumkin.
+// Faqat "bir marta bosiladigan" himoyasi qoldi (busy flag).
 
 function StatusActions({
   appt,
   size = 14,
   vertical = false,
 }: { appt: Appointment; size?: number; vertical?: boolean }) {
-  const now = useNow();
-  const locked = now > slotLockMs(appt.date, appt.time);
   const navigate = useNavigate();
   const location = useLocation();
   const [busy, setBusy] = useState(false);
 
-  // "kutilmoqda" bo'lmagan qabullarda tugmalar ko'rinmaydi (bir marta bosiladi).
-  // Agar vaqti o'tib ketgan bo'lsa ham qulf belgisi chiqadi.
+  // Status o'rnatilgach tugmalar yashirin bo'ladi (bir marta bosiladi)
   const alreadySet = appt.status !== 'kutilmoqda';
 
   if (alreadySet) {
@@ -315,40 +295,24 @@ function StatusActions({
     );
   }
 
-  if (locked) {
-    return (
-      <div
-        className={`appt-status-actions is-locked${vertical ? ' is-vertical' : ''}`}
-        onClick={(e) => e.stopPropagation()}
-        title="Vaqti o'tgan — status o'zgartirib bo'lmaydi"
-        aria-label="Yopiq"
-      >
-        <Lock size={size} />
-      </div>
-    );
-  }
-
-  // Bir marta bosilganda: busy flag — ikkinchi bosish ishlamaydi
   const handleKeldi = async () => {
     if (busy) return;
     setBusy(true);
     await setAppointmentStatus(appt.id, 'keldi');
-    // Navbat sahifasiga o'tish (admin va reception uchun)
     const base = location.pathname.startsWith('/reception') ? '/reception' : '/admin';
     navigate(`${base}/queue`);
   };
 
-  const handleKelmadi = async () => {
+  const handleKechikdi = async () => {
     if (busy) return;
     setBusy(true);
-    await setAppointmentStatus(appt.id, 'kelmadi');
+    await setAppointmentStatus(appt.id, 'kechikdi');
   };
 
   const handleBekor = async () => {
     if (busy) return;
     if (!confirm("Ushbu qabul o'chirilsinmi? Slot bo'shaydi va yangi qabul yoziladi.")) return;
     setBusy(true);
-    // Bekor qilish → qabul butunlay o'chadi, slot bo'shaydi
     await deleteAppointment(appt.id);
   };
 
@@ -368,11 +332,11 @@ function StatusActions({
         type="button"
         className="admin-icon-btn sm missed"
         disabled={busy}
-        onClick={handleKelmadi}
-        aria-label="Kelmadi"
-        title="Kelmadi — navbat o'tkazilsin"
+        onClick={handleKechikdi}
+        aria-label="Kechikdi"
+        title="Kechikdi — belgilangan vaqtda kelmagan"
       >
-        <UserX size={size} />
+        <Clock size={size} />
       </button>
       <button
         type="button"

@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 
-export type Status = 'kutilmoqda' | 'keldi' | 'bekor' | 'kelmadi';
+export type Status = 'kutilmoqda' | 'keldi' | 'bekor' | 'kechikdi' | 'kelmadi';
 
 export type Appointment = {
   id: string;
