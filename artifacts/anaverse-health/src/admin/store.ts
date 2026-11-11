@@ -427,31 +427,86 @@ export async function setEmployeeAssignments(employeeId: string, serviceIds: str
 export async function refreshAll() { await refetchAll(); }
 
 // --- Queue ticket (chek) ---
-// Yashirin iframe orqali chop etiladi — popup blocker buzmaydi.
-// Avtomatik chaqiriladi `setAppointmentStatus('keldi')` paytida, shuningdek
-// Navbat sahifasidagi "Chek chop etish" tugmasidan ham ishlatiladi.
-export function printQueueTicket(q: QueueItem) {
+// Chek kengligi — localStorage'da saqlanadi. Standart: 80mm.
+// Foydalanuvchi istalgan kenglikni tanlashi mumkin (58mm, 76mm, 80mm, custom).
+const CHEK_WIDTH_KEY = 'ssd:chek:width';
+export type ChekWidth = '58mm' | '72mm' | '76mm' | '80mm' | '112mm';
+
+export function getChekWidth(): ChekWidth {
+  if (typeof window === 'undefined') return '80mm';
+  const v = window.localStorage?.getItem(CHEK_WIDTH_KEY);
+  if (v === '58mm' || v === '72mm' || v === '76mm' || v === '80mm' || v === '112mm') return v;
+  return '80mm';
+}
+export function setChekWidth(w: ChekWidth) {
   if (typeof window === 'undefined') return;
+  try { window.localStorage?.setItem(CHEK_WIDTH_KEY, w); } catch { /* ignore */ }
+}
+
+// Yashirin iframe orqali chop etiladi — popup blocker buzmaydi.
+// Width parametri opsion — berilmasa, saqlangan preferensiyadan oladi.
+export function printQueueTicket(q: QueueItem, opts: { width?: ChekWidth } = {}) {
+  if (typeof window === 'undefined') return;
+  const width: ChekWidth = opts.width ?? getChekWidth();
+  // Chek kengligidan ichki ustun kengligi (3mm margin har tomondan)
+  const widthNum = Number(width.replace('mm', ''));
+  const inner = Math.max(40, widthNum - 6); // minimum 40mm
+  // Fontlarni kenglikka proporsional moslash
+  const base = widthNum <= 58 ? 9 : widthNum <= 72 ? 10 : widthNum <= 80 ? 11 : 12;
+  const bigNum = widthNum <= 58 ? 48 : widthNum <= 72 ? 60 : widthNum <= 80 ? 72 : 96;
+  const brand = widthNum <= 58 ? 13 : 15;
+
   const now = new Date();
   const date = now.toLocaleDateString('uz-UZ');
   const time = now.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
   const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
   const html = `<!doctype html>
 <html lang="uz"><head><meta charset="utf-8"><title>Navbat ${esc(q.number)}</title>
 <style>
-  @page { size: 80mm auto; margin: 0; }
+  /* Termal chek printer uchun — foydalanuvchi saylagan kenglik */
+  @page { size: ${width} auto; margin: 0; }
+  @media print {
+    html, body { width: ${width}; }
+  }
   * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  html, body { margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: #000; background: #fff; }
-  .ticket { width: 74mm; padding: 10px 12px 18px; margin: 0 auto; }
-  .brand { text-align: center; font-size: 15px; font-weight: 800; letter-spacing: 2px; padding: 4px 0 6px; border-bottom: 2px dashed #000; }
-  .brand small { display: block; font-weight: 500; font-size: 10px; letter-spacing: 1px; margin-top: 2px; }
-  .label { text-align: center; font-size: 10px; letter-spacing: 3px; color: #333; margin-top: 10px; text-transform: uppercase; }
-  .num { text-align: center; font-size: 72px; font-weight: 900; line-height: 1; margin: 6px 0 8px; letter-spacing: -2px; font-variant-numeric: tabular-nums; }
-  .info { font-size: 12px; line-height: 1.6; border-top: 1px dashed #333; border-bottom: 1px dashed #333; padding: 8px 2px; }
-  .row { display: flex; justify-content: space-between; gap: 8px; }
-  .row strong { font-weight: 700; text-align: right; max-width: 60%; }
-  .foot { text-align: center; font-size: 10px; margin-top: 10px; color: #333; }
-  .foot b { font-size: 11px; color: #000; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: #000; background: #fff;
+  }
+  .ticket {
+    width: ${inner}mm; max-width: ${inner}mm;
+    padding: 3mm 3mm 4mm; margin: 0 auto;
+    font-size: ${base}pt;
+  }
+  .brand {
+    text-align: center; font-size: ${brand}pt; font-weight: 800;
+    letter-spacing: 1.5pt; padding: 2pt 0 4pt;
+    border-bottom: 1.5pt dashed #000;
+  }
+  .brand small {
+    display: block; font-weight: 500; font-size: ${base - 2}pt;
+    letter-spacing: 0.8pt; margin-top: 1pt;
+  }
+  .label {
+    text-align: center; font-size: ${base - 2}pt; letter-spacing: 2pt;
+    color: #333; margin-top: 6pt; text-transform: uppercase;
+  }
+  .num {
+    text-align: center; font-size: ${bigNum}pt; font-weight: 900;
+    line-height: 1; margin: 4pt 0 6pt; letter-spacing: -1.5pt;
+    font-variant-numeric: tabular-nums;
+  }
+  .info {
+    font-size: ${base}pt; line-height: 1.5;
+    border-top: 1pt dashed #333; border-bottom: 1pt dashed #333;
+    padding: 4pt 1pt;
+  }
+  .row { display: flex; justify-content: space-between; gap: 4pt; }
+  .row strong { font-weight: 700; text-align: right; max-width: 60%; word-break: break-word; }
+  .foot { text-align: center; font-size: ${base - 2}pt; margin-top: 6pt; color: #333; line-height: 1.4; }
+  .foot b { font-size: ${base - 1}pt; color: #000; }
 </style></head>
 <body>
   <div class="ticket">

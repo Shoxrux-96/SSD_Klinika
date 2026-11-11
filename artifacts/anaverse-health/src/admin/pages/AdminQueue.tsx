@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { CheckCircle2, Clock3, DoorOpen, Monitor, Phone, Printer, Trash2, UserCheck } from 'lucide-react';
-import { printQueueTicket, removeFromQueue, setQueueStatus, useQueue, type QueueItem } from '../store';
+import {
+  printQueueTicket, removeFromQueue, setQueueStatus, useQueue,
+  getChekWidth, setChekWidth, type ChekWidth, type QueueItem,
+} from '../store';
 import { usePagination, TablePagination } from '../components/TablePagination';
 import { TvScreen } from '../components/TvScreen';
 
@@ -99,6 +102,8 @@ function QueueStatusActions({ item }: { item: QueueItem }) {
 export function AdminQueue() {
   const queue = useQueue();
   const [tvOpen, setTvOpen] = useState(false);
+  const [chekW, setChekW] = useState<ChekWidth>(() => getChekWidth());
+  const changeWidth = (w: ChekWidth) => { setChekWidth(w); setChekW(w); };
   const pg = usePagination(queue, [queue.length]);
 
   const inRoom = queue.filter((q) => q.status === 'kabinetda').length;
@@ -122,6 +127,21 @@ export function AdminQueue() {
           <p>Qabulga «Keldi» bosilgan bemorlar avtomatik ravishda shu yerda ko‘rinadi.</p>
         </div>
         <div className="admin-page-actions">
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#64748b' }}>
+            <Printer size={14} /> Chek kengligi:
+            <select
+              value={chekW}
+              onChange={(e) => changeWidth(e.target.value as ChekWidth)}
+              style={{ padding: '6px 10px', borderRadius: 7, border: '1px solid #e2e8f0', background: '#fff', fontSize: 13 }}
+              title="Termal printer qog'oz kengligi"
+            >
+              <option value="58mm">58mm (kichik)</option>
+              <option value="72mm">72mm</option>
+              <option value="76mm">76mm</option>
+              <option value="80mm">80mm (standart)</option>
+              <option value="112mm">112mm (katta)</option>
+            </select>
+          </label>
           <button className="admin-btn admin-btn-ghost"><Clock3 size={15} /> Real vaqt</button>
           <button className="admin-btn admin-btn-primary" onClick={() => setTvOpen(true)}>
             <Monitor size={15} /> TV ekran
