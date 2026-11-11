@@ -1182,122 +1182,127 @@ function PartialPaymentModal({
     { k: 'bank',    label: 'O‘tkazma',icon: ArrowRightLeft, color: '#b45309', soft: '#fef3c7' },
   ];
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
+  }, [onClose]);
+
+  const prevPct = data.amount > 0 ? (data.paid / data.amount) * 100 : 0;
+  const nowPct  = data.amount > 0 ? (clean / data.amount) * 100 : 0;
+
   return (
-    <div className="pay-backdrop" onClick={onClose}>
-      <div className="pay-modal pp-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="pay-head">
-          <div className="pay-head-ico" style={{ background: '#fff7ed', color: '#c2410c' }}>
-            <Receipt size={18} />
+    <div className="dpm-backdrop" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="dpm-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="dpm-head">
+          <div className="dpm-head-top">
+            <div className="dpm-head-ico" style={{ background: '#fff7ed', color: '#c2410c' }}>
+              <Receipt size={18} />
+            </div>
+            <div className="dpm-head-text">
+              <h2>Qarzni toʻlash</h2>
+              <p>Boʻlib-boʻlib yoki toʻliq toʻlash mumkin</p>
+            </div>
+            <button className="dpm-close" onClick={onClose} aria-label="Yopish"><X size={16} /></button>
           </div>
-          <div>
-            <h2>Bo'lib-bo'lib to'lash</h2>
-            <p>Qisman yoki to'liq to'lovni qabul qilish</p>
+
+          <div className="dpm-patient">
+            <div className="dpm-avatar">{data.patient.charAt(0).toUpperCase()}</div>
+            <div className="dpm-patient-info">
+              <strong>{data.patient}</strong>
+              <div className="dpm-patient-meta">
+                <span>{data.serviceName || '—'}</span>
+                <span>{data.doctor || '—'}</span>
+                <span><Calendar size={10} /> {data.date}</span>
+              </div>
+            </div>
           </div>
-          <button className="pay-close" onClick={onClose}><X size={16} /></button>
         </div>
 
-        <div className="pp-body">
-          {/* Yuqori: bemor va xizmat xulosasi */}
-          <div className="pp-summary-chip">
-            <div className="unpaid-avatar" style={avatarStyle(data.patient)}>
-              {data.patient.charAt(0).toUpperCase()}
-            </div>
-            <div className="pp-summary-main">
-              <strong>{data.patient}</strong>
-              <small>{data.serviceName || '—'} · {data.doctor || '—'} · <Calendar size={10} /> {data.date}</small>
-            </div>
-          </div>
-
-          {/* 3 ta mini stat */}
-          <div className="pp-stats">
-            <div className="pp-stat">
-              <small>Jami summa</small>
+        <div className="dpm-body">
+          <div className="dpm-stats">
+            <div className="dpm-stat">
+              <small>Jami qarz</small>
               <strong>{fmtSum(data.amount)}</strong>
             </div>
-            <div className="pp-stat pp-stat-paid">
-              <small>To'langan</small>
+            <div className="dpm-stat dpm-stat-paid">
+              <small>Toʻlangan</small>
               <strong>{fmtSum(data.paid)}</strong>
             </div>
-            <div className="pp-stat pp-stat-debt">
-              <small>Qarz</small>
+            <div className="dpm-stat dpm-stat-left">
+              <small>Qoldiq</small>
               <strong>{fmtSum(data.debt)}</strong>
             </div>
           </div>
 
-          {/* Progress bar */}
-          <div className="pp-progress">
-            <div className="pp-progress-bar">
-              <span className="pp-progress-prev" style={{ width: `${data.amount > 0 ? (data.paid / data.amount) * 100 : 0}%` }} />
-              <span className="pp-progress-now"  style={{
-                left: `${data.amount > 0 ? (data.paid / data.amount) * 100 : 0}%`,
-                width: `${data.amount > 0 ? (clean / data.amount) * 100 : 0}%`,
-              }} />
+          <div className="dpm-progress-box">
+            <div className="dpm-progress-head">
+              <span>Toʻlovdan soʻng</span>
+              <strong>{pct}%</strong>
             </div>
-            <div className="pp-progress-label">
-              Hozirgi to'lovdan so'ng: <strong>{pct}%</strong>
-              {after > 0 && <span> · qoladi: <em>{fmtSum(after)}</em></span>}
-              {after === 0 && clean > 0 && <span className="pp-close-chip"><CheckCircle2 size={12} /> To'liq yopiladi</span>}
+            <div className="dpm-progress-bar">
+              <span className="dpm-progress-prev" style={{ width: `${prevPct}%` }} />
+              <span className="dpm-progress-now"  style={{ left: `${prevPct}%`, width: `${nowPct}%` }} />
+            </div>
+            <div className="dpm-progress-note">
+              {clean === 0 && <><span className="dpm-dot" /> Summa kiriting</>}
+              {clean > 0 && after > 0 && <><span className="dpm-dot" /> Qoldiq: <strong>{fmtSum(after)} soʻm</strong></>}
+              {clean > 0 && after === 0 && <span className="dpm-ok"><CheckCircle2 size={12} /> Qarz yopiladi</span>}
             </div>
           </div>
 
-          {/* To'lov summasi */}
-          <div className="pay-field">
-            <label className="pay-label"><Wallet size={13} /> To'lov summasi</label>
-            <div className="pp-amount-row">
-              <div className="pay-money-input pp-amount-input">
-                <input type="number" min={0} max={data.debt} value={sum}
-                  onChange={(e) => setSum(Number(e.target.value))} />
-                <span>soʻm</span>
-              </div>
+          <div className="dpm-field">
+            <label className="dpm-label"><Wallet size={13} /> Toʻlov summasi</label>
+            <div className="dpm-amount">
+              <input type="number" min={0} max={data.debt} value={sum}
+                onChange={(e) => setSum(Number(e.target.value))} />
+              <span>soʻm</span>
             </div>
-            <div className="pp-quick">
+            <div className="dpm-chips">
               {quick.map((q) => (
                 <button key={q.label} type="button" onClick={() => setSum(q.v)}
-                  className={`pp-quick-btn ${sum === q.v ? 'is-active' : ''}`}>
-                  {q.label} <em>— {fmtSum(q.v)}</em>
+                  className={`dpm-chip ${sum === q.v ? 'is-active' : ''}`}>
+                  <strong>{q.label}</strong>
+                  <em>{fmtSum(q.v)}</em>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* To'lov usuli */}
-          <div className="pay-field">
-            <label className="pay-label"><CreditCard size={13} /> To'lov usuli</label>
-            <div className="pay-method-grid">
+          <div className="dpm-field">
+            <label className="dpm-label"><CreditCard size={13} /> Toʻlov usuli</label>
+            <div className="dpm-methods">
               {methodMeta.map((m) => {
                 const Ico = m.icon; const active = method === m.k;
                 return (
                   <button key={m.k} type="button" onClick={() => setMethod(m.k)}
-                    className={`pay-method ${active ? 'is-active' : ''}`}
-                    style={active ? { borderColor: m.color, background: m.soft } : undefined}>
-                    <span className="pay-method-ico" style={{ background: m.soft, color: m.color }}>
-                      <Ico size={16} />
-                    </span>
-                    <span className="pay-method-name">{m.label}</span>
-                    {active && <Check size={14} className="pay-method-check" style={{ color: m.color }} />}
+                    className={`dpm-method ${active ? 'is-active' : ''}`}>
+                    <Ico size={15} />
+                    <span>{m.label}</span>
+                    {active && <Check size={13} className="dpm-method-check" />}
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Izoh */}
-          <div className="pay-field">
-            <label className="pay-label"><MessageSquare size={13} /> Izoh <span className="pay-opt">(ixtiyoriy)</span></label>
-            <input className="pay-text-input" value={note} onChange={(e) => setNote(e.target.value)}
-              placeholder="Masalan: 1-qism, keyingi to'lov 15 kun ichida..." />
-          </div>
-
-          <div className="pp-footer">
-            <button className="pay-cancel" onClick={onClose}>Bekor qilish</button>
-            <button className="pay-submit-btn" disabled={clean <= 0}
-              onClick={() => clean > 0 && onConfirm(clean, method, note.trim() || undefined)}>
-              <CheckCircle2 size={16} /> {fmtSum(clean)} qabul qilish
-            </button>
+          <div className="dpm-field">
+            <label className="dpm-label"><MessageSquare size={13} /> Izoh <span className="dpm-opt">(ixtiyoriy)</span></label>
+            <textarea className="dpm-textarea" value={note} onChange={(e) => setNote(e.target.value)}
+              placeholder="qisqa izoh…" />
           </div>
         </div>
+
+        <div className="dpm-foot">
+          <button className="dpm-btn dpm-btn-ghost" onClick={onClose}>Bekor qilish</button>
+          <button className="dpm-btn dpm-btn-primary" disabled={clean <= 0}
+            onClick={() => clean > 0 && onConfirm(clean, method, note.trim() || undefined)}>
+            <Wallet size={14} /> Toʻlov qilish — {fmtSum(clean)} soʻm
+          </button>
+        </div>
       </div>
-      <style>{partialStyles}</style>
     </div>
   );
 }

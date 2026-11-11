@@ -332,117 +332,449 @@ function DebtPaymentModal({
     { k: 'bank',    label: "Oʻtkazma", Ico: ArrowRightLeft, color: '#b45309', soft: '#fef3c7' },
   ];
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
+  }, [onClose]);
+
+  const paidAfter = paidSum + clean;
+  const prevPct = debt.amount > 0 ? (paidSum / debt.amount) * 100 : 0;
+  const nowPct  = debt.amount > 0 ? (clean / debt.amount) * 100 : 0;
+
   return (
-    <div className="pay-backdrop" onClick={onClose}>
-      <div className="pay-modal pp-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="pay-head">
-          <div className="pay-head-ico" style={{ background: '#fef3c7', color: '#92400e' }}>
-            <BookOpen size={18} />
-          </div>
-          <div>
-            <h2>Qarzni toʻlash</h2>
-            <p>Boʻlib-boʻlib yoki toʻliq toʻlash mumkin</p>
-          </div>
-          <button className="pay-close" onClick={onClose}><X size={16} /></button>
-        </div>
-
-        <div className="pp-body">
-          <div className="pp-summary-chip">
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: '#fef3c7', color: '#92400e', display: 'grid', placeItems: 'center', fontWeight: 700 }}>
-              {debt.patient.charAt(0).toUpperCase()}
+    <div className="dpm-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="dpm-title">
+      <div className="dpm-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="dpm-head">
+          <div className="dpm-head-top">
+            <div className="dpm-head-ico"><BookOpen size={18} /></div>
+            <div className="dpm-head-text">
+              <h2 id="dpm-title">Qarzni toʻlash</h2>
+              <p>Boʻlib-boʻlib yoki toʻliq toʻlash mumkin</p>
             </div>
-            <div className="pp-summary-main">
+            <button className="dpm-close" onClick={onClose} aria-label="Yopish"><X size={16} /></button>
+          </div>
+
+          <div className="dpm-patient">
+            <div className="dpm-avatar">{debt.patient.charAt(0).toUpperCase()}</div>
+            <div className="dpm-patient-info">
               <strong>{debt.patient}</strong>
-              <small>
-                {debt.phone ? <><Phone size={10} /> {debt.phone} · </> : null}
-                {debt.services[0] ?? '—'} · {debt.doctor || '—'} · <Calendar size={10} /> {debt.date}
-              </small>
-            </div>
-          </div>
-
-          <div className="pp-stats">
-            <div className="pp-stat"><small>Jami qarz</small><strong>{fmt(debt.amount)}</strong></div>
-            <div className="pp-stat pp-stat-paid"><small>Toʻlangan</small><strong>{fmt(paidSum)}</strong></div>
-            <div className="pp-stat pp-stat-debt"><small>Qoldiq</small><strong>{fmt(remaining)}</strong></div>
-          </div>
-
-          <div className="pp-progress">
-            <div className="pp-progress-bar">
-              <span className="pp-progress-prev" style={{ width: `${debt.amount > 0 ? (paidSum / debt.amount) * 100 : 0}%` }} />
-              <span className="pp-progress-now" style={{
-                left: `${debt.amount > 0 ? (paidSum / debt.amount) * 100 : 0}%`,
-                width: `${debt.amount > 0 ? (clean / debt.amount) * 100 : 0}%`,
-              }} />
-            </div>
-            <div className="pp-progress-label">
-              Toʻlovdan soʻng: <strong>{pct}%</strong>
-              {after > 0 && <span> · qoladi: <em>{fmt(after)}</em></span>}
-              {after === 0 && clean > 0 && <span className="pp-close-chip"><CheckCircle2 size={12} /> Qarz yopiladi</span>}
-            </div>
-          </div>
-
-          <div className="pay-field">
-            <label className="pay-label"><Wallet size={13} /> Toʻlov summasi</label>
-            <div className="pp-amount-row">
-              <div className="pay-money-input pp-amount-input">
-                <input type="number" min={0} max={remaining} value={sum} onChange={(e) => setSum(Number(e.target.value))} />
-                <span>soʻm</span>
+              <div className="dpm-patient-meta">
+                {debt.phone ? <span><Phone size={10} /> {debt.phone}</span> : null}
+                <span>{debt.services[0] ?? '—'}</span>
+                <span>{debt.doctor || '—'}</span>
+                <span><Calendar size={10} /> {debt.date}</span>
               </div>
             </div>
-            <div className="pp-quick">
+          </div>
+        </div>
+
+        <div className="dpm-body">
+          <div className="dpm-stats">
+            <div className="dpm-stat">
+              <small>Jami qarz</small>
+              <strong>{fmt(debt.amount)}</strong>
+            </div>
+            <div className="dpm-stat dpm-stat-paid">
+              <small>Toʻlangan</small>
+              <strong>{fmt(paidSum)}</strong>
+            </div>
+            <div className="dpm-stat dpm-stat-left">
+              <small>Qoldiq</small>
+              <strong>{fmt(remaining)}</strong>
+            </div>
+          </div>
+
+          <div className="dpm-progress-box">
+            <div className="dpm-progress-head">
+              <span>Toʻlovdan soʻng</span>
+              <strong>{pct}%</strong>
+            </div>
+            <div className="dpm-progress-bar">
+              <span className="dpm-progress-prev" style={{ width: `${prevPct}%` }} />
+              <span className="dpm-progress-now"  style={{ left: `${prevPct}%`, width: `${nowPct}%` }} />
+            </div>
+            <div className="dpm-progress-note">
+              {clean === 0 && <><span className="dpm-dot" /> Summa kiriting</>}
+              {clean > 0 && after > 0 && <><span className="dpm-dot" /> Qoldiq: <strong>{fmt(after)} soʻm</strong></>}
+              {clean > 0 && after === 0 && <span className="dpm-ok"><CheckCircle2 size={12} /> Qarz yopiladi</span>}
+            </div>
+          </div>
+
+          <div className="dpm-field">
+            <label className="dpm-label"><Wallet size={13} /> Toʻlov summasi</label>
+            <div className="dpm-amount">
+              <input type="number" min={0} max={remaining} value={sum}
+                onChange={(e) => setSum(Number(e.target.value))} />
+              <span>soʻm</span>
+            </div>
+            <div className="dpm-chips">
               {quick.map((q) => (
                 <button key={q.label} type="button" onClick={() => setSum(q.v)}
-                  className={`pp-quick-btn ${sum === q.v ? 'is-active' : ''}`}>
-                  {q.label} <em>— {fmt(q.v)}</em>
+                  className={`dpm-chip ${sum === q.v ? 'is-active' : ''}`}>
+                  <strong>{q.label}</strong>
+                  <em>{fmt(q.v)}</em>
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="pay-field">
-            <label className="pay-label"><CreditCard size={13} /> Toʻlov usuli</label>
-            <div className="pay-method-grid">
+          <div className="dpm-field">
+            <label className="dpm-label"><CreditCard size={13} /> Toʻlov usuli</label>
+            <div className="dpm-methods">
               {methodMeta.map((m) => {
                 const active = method === m.k;
                 return (
                   <button key={m.k} type="button" onClick={() => setMethod(m.k)}
-                    className={`pay-method ${active ? 'is-active' : ''}`}
-                    style={active ? { borderColor: m.color, background: m.soft } : undefined}>
-                    <span className="pay-method-ico" style={{ background: m.soft, color: m.color }}>
-                      <m.Ico size={16} />
-                    </span>
-                    <span className="pay-method-name">{m.label}</span>
-                    {active && <Check size={14} className="pay-method-check" style={{ color: m.color }} />}
+                    className={`dpm-method ${active ? 'is-active' : ''}`}>
+                    <m.Ico size={15} />
+                    <span>{m.label}</span>
+                    {active && <Check size={13} className="dpm-method-check" />}
                   </button>
                 );
               })}
             </div>
           </div>
 
-          <div className="pay-field">
-            <label className="pay-label">Izoh (ixtiyoriy)</label>
-            <input className="admin-input" placeholder="qisqa izoh…" value={note} onChange={(e) => setNote(e.target.value)} />
-          </div>
-
-          <div className="pay-actions">
-            <button className="admin-btn admin-btn-ghost" onClick={onClose}>Bekor qilish</button>
-            <button
-              className="admin-btn admin-btn-primary"
-              disabled={busy || clean <= 0}
-              onClick={async () => {
-                setBusy(true);
-                try { await onConfirm(clean, method, note || undefined); }
-                finally { setBusy(false); }
-              }}
-            >
-              <Wallet size={14} /> Toʻlov qilish — {fmt(clean)}
-            </button>
+          <div className="dpm-field">
+            <label className="dpm-label">Izoh <span className="dpm-opt">(ixtiyoriy)</span></label>
+            <textarea className="dpm-textarea" placeholder="qisqa izoh…" value={note}
+              onChange={(e) => setNote(e.target.value)} />
           </div>
         </div>
+
+        <div className="dpm-foot">
+          <button className="dpm-btn dpm-btn-ghost" onClick={onClose}>Bekor qilish</button>
+          <button
+            className="dpm-btn dpm-btn-primary"
+            disabled={busy || clean <= 0}
+            onClick={async () => {
+              setBusy(true);
+              try { await onConfirm(clean, method, note || undefined); }
+              finally { setBusy(false); }
+            }}
+          >
+            <Wallet size={14} /> Toʻlov qilish — {fmt(clean)} soʻm
+          </button>
+        </div>
       </div>
+      <style>{debtPayStyles}</style>
     </div>
   );
 }
+
+const debtPayStyles = `
+.dpm-backdrop {
+  position: fixed; inset: 0; z-index: 1000;
+  background: radial-gradient(1200px 600px at 50% 0%, rgba(37, 99, 235, 0.18), transparent 60%),
+              rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: grid; place-items: center;
+  padding: 16px;
+  animation: dpmFade .2s ease-out;
+}
+@keyframes dpmFade { from { opacity: 0 } to { opacity: 1 } }
+@keyframes dpmPop {
+  from { opacity: 0; transform: translateY(12px) scale(.96) }
+  to   { opacity: 1; transform: translateY(0)    scale(1) }
+}
+.dpm-modal {
+  width: 100%; max-width: 500px;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow:
+    0 40px 80px -24px rgba(15, 23, 42, 0.45),
+    0 20px 40px -20px rgba(37, 99, 235, 0.22),
+    0 0 0 1px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  max-height: calc(100vh - 32px);
+  animation: dpmPop .25s cubic-bezier(.2,.9,.25,1);
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  color: #0f172a;
+}
+
+/* Head */
+.dpm-head {
+  padding: 22px 24px 16px;
+  background: linear-gradient(135deg, #f8fafc 0%, #eef4ff 100%);
+  border-bottom: 1px solid rgba(37, 99, 235, 0.08);
+  position: relative;
+}
+.dpm-head::before {
+  content: "";
+  position: absolute; left: 0; right: 0; top: 0; height: 3px;
+  background: linear-gradient(90deg, #2563eb, #4f46e5, #10b981);
+}
+.dpm-head-top { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: start; }
+.dpm-head-ico {
+  width: 40px; height: 40px; border-radius: 12px;
+  background: linear-gradient(135deg, #fef3c7, #fde68a); color: #92400e;
+  display: grid; place-items: center;
+  box-shadow: 0 4px 10px -4px rgba(217, 119, 6, 0.4);
+}
+.dpm-head-text h2 {
+  margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.015em; color: #0f172a;
+}
+.dpm-head-text p { margin: 3px 0 0; color: #64748b; font-size: 13px; }
+.dpm-close {
+  width: 32px; height: 32px; border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.7);
+  color: #64748b;
+  cursor: pointer; display: grid; place-items: center;
+  transition: all .15s;
+  backdrop-filter: blur(8px);
+}
+.dpm-close:hover { color: #0f172a; background: #fff; transform: rotate(90deg); }
+
+.dpm-patient {
+  margin-top: 14px;
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 14px;
+  backdrop-filter: blur(8px);
+}
+.dpm-avatar {
+  width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  color: #fff;
+  display: grid; place-items: center; font-weight: 700; font-size: 15px;
+  box-shadow: 0 6px 14px -4px rgba(59, 130, 246, 0.5);
+}
+.dpm-patient-info { min-width: 0; flex: 1; }
+.dpm-patient-info strong { font-size: 13.5px; font-weight: 600; color: #0f172a; display: block; }
+.dpm-patient-meta {
+  margin-top: 2px; display: flex; flex-wrap: wrap; gap: 4px 10px;
+  font-size: 11.5px; color: #64748b;
+}
+.dpm-patient-meta span { display: inline-flex; align-items: center; gap: 4px; }
+.dpm-patient-meta span + span::before { content: "·"; color: #cbd5e1; margin-right: 10px; margin-left: -6px; }
+
+/* Body */
+.dpm-body {
+  padding: 16px 22px;
+  overflow-y: auto;
+  display: grid; gap: 16px;
+}
+
+.dpm-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+}
+.dpm-stat {
+  min-width: 0; text-align: center;
+  padding: 12px 10px;
+  background: #fff;
+  border: 1px solid #e4e9f1;
+  border-radius: 12px;
+  position: relative;
+  transition: transform .15s, box-shadow .15s;
+}
+.dpm-stat:hover { transform: translateY(-1px); box-shadow: 0 4px 12px -4px rgba(15, 23, 42, 0.08); }
+.dpm-stat-paid { background: linear-gradient(180deg, #f0fdf4, #ecfdf5); border-color: #bbf7d0; }
+.dpm-stat-left { background: linear-gradient(180deg, #fef2f2, #fee2e2); border-color: #fecaca; }
+.dpm-stat small {
+  display: block;
+  font-size: 10.5px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.06em; color: #64748b;
+}
+.dpm-stat strong {
+  display: block; margin-top: 4px;
+  font-size: 15px; font-weight: 700; letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: #0f172a;
+}
+.dpm-stat-paid strong { color: #047857; }
+.dpm-stat-left strong { color: #b91c1c; }
+
+/* Progress */
+.dpm-progress-box {
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #fafbff, #f1f5ff);
+  border: 1px solid #e4e9f1;
+  border-radius: 14px;
+}
+.dpm-progress-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 12px; color: #64748b;
+}
+.dpm-progress-head strong {
+  color: #2563eb; font-size: 16px; font-weight: 700;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.01em;
+}
+.dpm-progress-bar {
+  position: relative;
+  height: 10px; margin-top: 8px;
+  background: #e4e9f1;
+  border-radius: 999px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+.dpm-progress-prev {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  background: linear-gradient(90deg, #10b981, #059669);
+}
+.dpm-progress-now {
+  position: absolute; top: 0; bottom: 0;
+  background: linear-gradient(90deg, #3b82f6, #6366f1);
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+}
+.dpm-progress-note {
+  margin-top: 8px; font-size: 12px; color: #64748b;
+  display: flex; align-items: center; gap: 6px;
+}
+.dpm-progress-note strong { color: #0f172a; font-weight: 600; }
+.dpm-dot { width: 6px; height: 6px; border-radius: 50%; background: #2563eb; }
+.dpm-ok {
+  display: inline-flex; align-items: center; gap: 4px;
+  color: #047857; font-weight: 600; font-size: 12px;
+}
+
+/* Fields */
+.dpm-field { display: grid; gap: 8px; }
+.dpm-label {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12.5px; font-weight: 600; color: #0f172a;
+}
+.dpm-opt { color: #94a3b8; font-weight: 400; }
+
+.dpm-amount {
+  display: flex; align-items: center;
+  background: #f6f8fb;
+  border: 1.5px solid #e4e9f1;
+  border-radius: 12px;
+  padding: 2px 14px 2px 4px;
+  transition: border-color .15s, background .15s;
+}
+.dpm-amount:focus-within { border-color: #2563eb; background: #fff; }
+.dpm-amount input {
+  flex: 1; min-width: 0;
+  border: 0; background: transparent; outline: none;
+  padding: 12px 10px;
+  font: inherit;
+  font-size: 20px; font-weight: 700; color: #0f172a;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  -moz-appearance: textfield;
+}
+.dpm-amount input::-webkit-outer-spin-button,
+.dpm-amount input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.dpm-amount span { color: #64748b; font-size: 13px; font-weight: 500; padding-right: 4px; }
+
+.dpm-chips {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+}
+.dpm-chip {
+  appearance: none; cursor: pointer;
+  border: 1px solid #e4e9f1;
+  background: #f6f8fb;
+  color: #0f172a;
+  border-radius: 10px;
+  padding: 9px 4px;
+  display: grid; gap: 2px;
+  text-align: center;
+  transition: all .12s;
+  font-family: inherit;
+}
+.dpm-chip strong { display: block; font-weight: 700; font-size: 12.5px; color: #0f172a; }
+.dpm-chip em {
+  display: block; font-style: normal;
+  color: #64748b; font-size: 10.5px; font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.dpm-chip:hover { border-color: #cfd6e3; background: #eef2f7; }
+.dpm-chip.is-active {
+  background: linear-gradient(135deg, #dbeafe, #e0e7ff);
+  border-color: #3b82f6;
+  box-shadow: 0 2px 8px -2px rgba(59, 130, 246, 0.3);
+}
+.dpm-chip.is-active strong, .dpm-chip.is-active em { color: #1d4ed8; }
+
+.dpm-methods {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  background: #f6f8fb;
+  border: 1px solid #e4e9f1;
+  border-radius: 12px;
+  padding: 4px;
+  gap: 4px;
+}
+.dpm-method {
+  appearance: none; border: 0; cursor: pointer;
+  background: transparent; color: #64748b;
+  padding: 10px 6px; border-radius: 8px;
+  font: inherit; font-size: 12.5px; font-weight: 500;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  position: relative;
+  transition: all .12s;
+}
+.dpm-method:hover { color: #0f172a; }
+.dpm-method.is-active {
+  background: #fff; color: #0f172a; font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 0 0 1px #e4e9f1;
+}
+.dpm-method-check { color: #047857; }
+
+.dpm-textarea {
+  width: 100%; box-sizing: border-box;
+  border: 1.5px solid #e4e9f1;
+  background: #f6f8fb;
+  color: #0f172a;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font: inherit; font-size: 13px;
+  resize: vertical; min-height: 56px;
+  outline: none;
+  transition: border-color .15s, background .15s;
+  font-family: inherit;
+}
+.dpm-textarea:focus { border-color: #2563eb; background: #fff; }
+.dpm-textarea::placeholder { color: #94a3b8; }
+
+/* Footer */
+.dpm-foot {
+  padding: 14px 22px 18px;
+  border-top: 1px solid #e4e9f1;
+  background: #f6f8fb;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+}
+.dpm-btn {
+  appearance: none; cursor: pointer; font: inherit;
+  border: 0; border-radius: 12px;
+  padding: 12px 18px;
+  font-size: 13.5px; font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  transition: all .12s;
+}
+.dpm-btn-ghost {
+  background: transparent; color: #64748b;
+  border: 1px solid #e4e9f1;
+}
+.dpm-btn-ghost:hover { color: #0f172a; background: #eef2f7; }
+.dpm-btn-primary {
+  background: linear-gradient(135deg, #2563eb, #4f46e5);
+  color: #fff;
+  box-shadow: 0 10px 22px -8px rgba(37, 99, 235, 0.6), 0 0 0 1px rgba(37, 99, 235, 0.3) inset;
+}
+.dpm-btn-primary:hover { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 14px 28px -8px rgba(37, 99, 235, 0.65); }
+.dpm-btn-primary:active { transform: translateY(0); }
+.dpm-btn-primary:disabled {
+  opacity: 0.55; cursor: not-allowed; filter: none; box-shadow: none;
+}
+
+@media (max-width: 420px) {
+  .dpm-chips { grid-template-columns: repeat(2, 1fr); }
+  .dpm-head, .dpm-body, .dpm-foot { padding-left: 16px; padding-right: 16px; }
+  .dpm-stat + .dpm-stat { padding-left: 6px; }
+  .dpm-stat strong { font-size: 13.5px; }
+}
+`;
 
 /* ------- To'lov tarixi modali ------- */
 function DebtHistoryModal({ debt, lines, onClose }: {
