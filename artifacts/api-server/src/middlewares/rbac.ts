@@ -28,6 +28,7 @@ const ALL_STAFF: Role[] = ["admin", "shifokor", "laborant", "registrator", "kass
 const CLINIC_STAFF: Role[] = ["admin", "shifokor", "laborant"];            // tibbiy jamoa
 const FRONT_DESK: Role[] = ["admin", "registrator"];                       // qabulxona
 const FINANCE: Role[] = ["admin", "kassir", "buxgalter"];                  // moliya
+const FINANCE_PLUS_REG: Role[] = ["admin", "kassir", "buxgalter", "registrator"]; // kassa + qabulxona
 const DOCTOR_WRITE: Role[] = ["admin", "shifokor"];                        // davolash yozish
 const LAB_WRITE: Role[] = ["admin", "laborant"];                           // lab natija yozish
 const REGISTRAR_PLUS_DOCTOR: Role[] = ["admin", "registrator", "shifokor"]; // qabul boshqarish
@@ -79,15 +80,15 @@ const RULES: Rule[] = [
   { path: "/dental-records", methods: ["GET"], roles: ALL_STAFF },
   { path: "/dental-records", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: DOCTOR_WRITE },
 
-  // --- Moliya (kassir va buxgalter — bir xil to'liq huquqlar) ---
-  { path: "/transactions", roles: FINANCE },
-  { path: "/payrolls",     roles: FINANCE },
-  { path: "/finance",      roles: FINANCE },
-  { path: "/debts",        methods: ["GET"], roles: [...FINANCE, "registrator"] },
-  { path: "/debts",        methods: ["POST", "PUT", "PATCH", "DELETE"], roles: FINANCE },
-  // Promo kodlar — barcha hodim ko'ra oladi, faqat kassa yozadi
+  // --- Moliya (kassir va buxgalter — bir xil to'liq huquqlar; registrator kassada ishlaydi) ---
+  { path: "/transactions", roles: FINANCE_PLUS_REG },
+  { path: "/payrolls",     methods: ["GET"], roles: [...FINANCE_PLUS_REG] },
+  { path: "/payrolls",     methods: ["POST", "PUT", "PATCH", "DELETE"], roles: FINANCE },
+  { path: "/finance",      roles: FINANCE_PLUS_REG },
+  { path: "/debts",        roles: FINANCE_PLUS_REG },
+  // Promo kodlar — barcha hodim ko'ra oladi, kassa va registrator yozadi
   { path: "/promo-codes",  methods: ["GET"], roles: ALL_STAFF },
-  { path: "/promo-codes",  methods: ["POST", "PUT", "PATCH", "DELETE"], roles: FINANCE },
+  { path: "/promo-codes",  methods: ["POST", "PUT", "PATCH", "DELETE"], roles: FINANCE_PLUS_REG },
 
   // --- Hisobotlar ---
   { path: "/reports", methods: ["GET"], roles: [...FINANCE, "shifokor"] },

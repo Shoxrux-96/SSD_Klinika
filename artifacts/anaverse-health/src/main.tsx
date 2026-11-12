@@ -34,7 +34,6 @@ import { ClinicLayout } from './clinic/ClinicLayout';
 import { ClinicOverview } from './clinic/ClinicOverview';
 import { DoctorQueue } from './clinic/DoctorQueue';
 import { DoctorReferrals } from './clinic/DoctorReferrals';
-import { DoctorAttendance } from './clinic/DoctorAttendance';
 import { DoctorPayroll } from './clinic/DoctorPayroll';
 import { DoctorTreatments } from './clinic/DoctorTreatments';
 // Laboratoriya sahifasi — admin va laborant bir xil manba (lab_results jadvali)
@@ -136,11 +135,11 @@ createRoot(document.getElementById('root')!, {
             <Route path="prescriptions" element={<AdminPrescriptions />} />
             <Route path="referrals" element={<DoctorReferrals />} />
             <Route path="laboratory" element={<LaborantLab />} />
-            <Route path="attendance" element={<DoctorAttendance />} />
+            <Route path="attendance" element={<AdminAttendance />} />
             <Route path="payroll" element={<DoctorPayroll />} />
           </Route>
 
-          {/* RECEPTION — reg/oper/mod */}
+          {/* RECEPTION — registrator */}
           <Route path="/reception" element={
             <RoleRoute allow={['registrator']}><ReceptionLayout /></RoleRoute>
           }>
@@ -150,6 +149,9 @@ createRoot(document.getElementById('root')!, {
             <Route path="patients" element={<AdminPatients />} />
             <Route path="call-center" element={<AdminCallCenter />} />
             <Route path="services" element={<AdminServices />} />
+            <Route path="cashier" element={<AdminCashier />} />
+            <Route path="attendance" element={<AdminAttendance />} />
+            <Route path="payroll" element={<AdminPayroll />} />
           </Route>
 
           {/* CASHIER / BUXGALTER — admin kabi, faqat Davolash va Xizmatlar bo'limlarisiz */}
