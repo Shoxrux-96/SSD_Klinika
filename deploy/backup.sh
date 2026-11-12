@@ -9,6 +9,7 @@ BACKUP_DIR="/var/backups/ssd-klinika"
 RETENTION_DAYS=14
 
 mkdir -p "$BACKUP_DIR"
+cd "$BACKUP_DIR"
 
 # .env dan DATABASE_URL ni yuklash
 if [ ! -f "$ROOT/.env" ]; then
@@ -20,7 +21,7 @@ set -a
 . "$ROOT/.env"
 set +a
 
-: "${DATABASE_URL:?DATABASE_URL .env ichida bo'lishi kerak}"
+: "${DATABASE_URL:?DATABASE_URL .env ichida bolishi kerak}"
 
 STAMP="$(date +%Y%m%d_%H%M%S)"
 OUT="$BACKUP_DIR/ssd-klinika_$STAMP.sql.gz"
