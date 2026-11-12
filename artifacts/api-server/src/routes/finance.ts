@@ -1,8 +1,8 @@
 import { Router, type IRouter } from "express";
 import {
-  transactionsTable, payrollsTable, debtsTable, db,
+  transactionsTable, payrollsTable, debtsTable, promoCodesTable, db,
 } from "@workspace/db";
-import { sql } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
 import { crudRouter } from "../lib/crud";
 
 const router: IRouter = Router();
@@ -40,6 +40,34 @@ router.use(crudRouter({
   defaults: () => ({ deferredAt: Date.now(), status: "ochiq" }),
   orderBy: debtsTable.deferredAt,
 }));
+
+// --- Promo kodlar ---
+router.use(crudRouter({
+  path: "/promo-codes",
+  table: promoCodesTable,
+  idColumn: promoCodesTable.id,
+  defaults: () => ({ createdAt: Date.now() }),
+  orderBy: promoCodesTable.createdAt,
+}));
+
+router.get("/promo-codes/by-code/:code", async (req, res) => {
+  const code = String(req.params.code ?? "").trim().toUpperCase();
+  if (!code) return res.status(400).json({ error: "code required" });
+  const [row] = await db.select().from(promoCodesTable).where(eq(promoCodesTable.code, code));
+  if (!row) return res.status(404).json({ error: "Not found" });
+  res.json(row);
+});
+
+router.post("/promo-codes/:id/mark-used", async (req, res) => {
+  const paymentId = String(req.body?.paymentId ?? "") || null;
+  const [row] = await db
+    .update(promoCodesTable)
+    .set({ usedAt: Date.now(), usedPaymentId: paymentId })
+    .where(eq(promoCodesTable.id, req.params.id))
+    .returning();
+  if (!row) return res.status(404).json({ error: "Not found" });
+  res.json(row);
+});
 
 router.get("/finance/summary", async (_req, res) => {
   const result: any = await db.execute(sql`

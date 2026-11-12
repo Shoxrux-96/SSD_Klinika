@@ -85,6 +85,9 @@ const RULES: Rule[] = [
   { path: "/finance",      roles: FINANCE },
   { path: "/debts",        methods: ["GET"], roles: [...FINANCE, "registrator"] },
   { path: "/debts",        methods: ["POST", "PUT", "PATCH", "DELETE"], roles: FINANCE },
+  // Promo kodlar — barcha hodim ko'ra oladi, faqat kassa yozadi
+  { path: "/promo-codes",  methods: ["GET"], roles: ALL_STAFF },
+  { path: "/promo-codes",  methods: ["POST", "PUT", "PATCH", "DELETE"], roles: FINANCE },
 
   // --- Hisobotlar ---
   { path: "/reports", methods: ["GET"], roles: [...FINANCE, "shifokor"] },
@@ -101,8 +104,9 @@ const RULES: Rule[] = [
   { path: "/tech-orders",   methods: ["GET"], roles: ["admin", "shifokor", "kassir", "buxgalter"] },
   { path: "/tech-orders",   methods: ["POST", "PUT", "PATCH", "DELETE"], roles: DOCTOR_WRITE },
 
-  // --- Davomat (har hodim o'z davomatini ko'rishi/belgilashi) ---
-  { path: "/attendance", roles: ALL_STAFF },
+  // --- Davomat: barcha hodim ko'radi, faqat admin va registrator yozadi/o'chiradi ---
+  { path: "/attendance", methods: ["GET"], roles: ALL_STAFF },
+  { path: "/attendance", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: FRONT_DESK },
 ];
 
 // Autentifikatsiya talab qilinmaydigan path'lar (auth.ts'da batafsil belgilangan).

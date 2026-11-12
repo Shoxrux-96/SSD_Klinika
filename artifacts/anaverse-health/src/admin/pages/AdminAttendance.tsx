@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { CalendarCheck, Search, Users, Clock, XCircle, Wallet } from 'lucide-react';
 import { useEmployees } from '../store';
+import { useAuth } from '../../auth/AuthContext';
 import {
   useAttendance, setAttendance, salaryInRange, dailyRateFor, workingDaysInMonth,
   INCOME_TAX, type AttendanceStatus,
@@ -126,6 +127,8 @@ async function upsertBase(employeeId: string, baseSalary: number) {
 }
 
 export function AdminAttendance() {
+  const { user } = useAuth();
+  const canEdit = user?.role === 'admin' || user?.role === 'registrator';
   const employees = useEmployees().filter((e) => !e.archived);
   const records = useAttendance();
   const payroll = usePayroll();
@@ -218,9 +221,13 @@ export function AdminAttendance() {
 
       <div className="admin-page-head">
         <div>
-          <h1>Davomat</h1>
+          <h1>Davomat {!canEdit && <small style={{ fontSize: 12, fontWeight: 500, color: '#64748b', background: '#f1f5f9', padding: '3px 10px', borderRadius: 999, marginLeft: 8, verticalAlign: 'middle' }}>Faqat koʻrish</small>}</h1>
           <p className="att-sub">
-            Faqat <strong>bugungi kun</strong> uchun belgilash mumkin · <Clock size={12} style={{ verticalAlign: '-2px' }} /> {nowLabel}
+            {canEdit ? (
+              <>Faqat <strong>bugungi kun</strong> uchun belgilash mumkin · <Clock size={12} style={{ verticalAlign: '-2px' }} /> {nowLabel}</>
+            ) : (
+              <>Davomatni faqat <strong>admin</strong> va <strong>registrator</strong> belgilaydi. Siz faqat koʻrishingiz mumkin.</>
+            )}
           </p>
         </div>
         <div className="admin-page-actions">
@@ -356,7 +363,7 @@ export function AdminAttendance() {
                     {days.map((d) => {
                       const st = recMap.get(`${e.id}|${d}`);
                       const isToday = d === today;
-                      const interactable = isToday && !st;
+                      const interactable = canEdit && isToday && !st;
                       const title = st
                         ? `${d} — ${TITLE[st]} (qulflangan)`
                         : isToday

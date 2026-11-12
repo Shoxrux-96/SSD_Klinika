@@ -46,6 +46,7 @@ tags:
   - name: settings
   - name: audit-logs
   - name: api-keys
+  - name: promo-codes
 
 paths:
   /healthz:
@@ -78,14 +79,53 @@ paths:
                   apiKey: { type: string }
         "401": { description: Invalid credentials }
 
-  /patients: &listPost
-    get: { tags: [patients], summary: List, responses: { "200": { description: OK } } }
-    post: { tags: [patients], summary: Create, responses: { "201": { description: Created } } }
-  /patients/{id}: &byId
+  /patients:
+    get:
+      tags: [patients]
+      summary: List patients
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Patient" }
+    post:
+      tags: [patients]
+      summary: Create patient (JSHSHIR majburiy)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PatientInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Patient" }
+        "400": { description: "Validatsiya xatoligi (JSHSHIR 14 raqam emas, majburiy maydon bo'sh, va h.k.)" }
+        "409": { description: "Bu JSHSHIR bilan bemor allaqachon mavjud" }
+  /patients/{id}:
     parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
     get:    { tags: [patients], summary: Get,     responses: { "200": { description: OK }, "404": { description: Not found } } }
-    put:    { tags: [patients], summary: Replace, responses: { "200": { description: OK } } }
-    patch:  { tags: [patients], summary: Update,  responses: { "200": { description: OK } } }
+    put:
+      tags: [patients]
+      summary: Replace
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PatientInput" }
+      responses: { "200": { description: OK }, "400": { description: Validation }, "409": { description: Conflict } }
+    patch:
+      tags: [patients]
+      summary: Update (partial)
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PatientInput" }
+      responses: { "200": { description: OK }, "400": { description: Validation }, "409": { description: Conflict } }
     delete: { tags: [patients], summary: Delete,  responses: { "204": { description: Deleted } } }
 
   /employees:
@@ -295,6 +335,38 @@ paths:
     parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
     delete: { tags: [api-keys], responses: { "204": { description: Deleted } } }
 
+  /promo-codes:
+    get:  { tags: [promo-codes], summary: List, responses: { "200": { description: OK } } }
+    post:
+      tags: [promo-codes]
+      summary: Create promo code
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PromoCode" }
+      responses: { "201": { description: Created } }
+  /promo-codes/{id}:
+    parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+    get:    { tags: [promo-codes], responses: { "200": { description: OK } } }
+    patch:  { tags: [promo-codes], responses: { "200": { description: OK } } }
+    delete: { tags: [promo-codes], responses: { "204": { description: Deleted } } }
+  /promo-codes/by-code/{code}:
+    parameters: [{ in: path, name: code, required: true, schema: { type: string } }]
+    get: { tags: [promo-codes], summary: Lookup by code, responses: { "200": { description: OK }, "404": { description: Not found } } }
+  /promo-codes/{id}/mark-used:
+    parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+    post:
+      tags: [promo-codes]
+      summary: Mark promo as used
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                paymentId: { type: string }
+      responses: { "200": { description: OK } }
+
 components:
   securitySchemes:
     ApiKeyHeader:
@@ -314,6 +386,60 @@ components:
         roleId: { type: string, nullable: true }
         employeeId: { type: string, nullable: true }
         active: { type: boolean }
+
+    Patient:
+      type: object
+      properties:
+        id: { type: string, description: "UUID" }
+        fullName: { type: string }
+        phone: { type: string }
+        address: { type: string }
+        region: { type: string, nullable: true }
+        district: { type: string, nullable: true }
+        gender: { type: string, enum: [erkak, ayol], nullable: true }
+        birthDate: { type: string, format: date, nullable: true }
+        jshshir:
+          type: string
+          nullable: true
+          minLength: 14
+          maxLength: 14
+          pattern: '^[0-9]{14}$'
+          description: "Jismoniy shaxsning shaxsiy identifikatsiya raqami — aniq 14 ta raqam, takrorlanmaydi."
+        addedAt: { type: integer, format: int64 }
+        archived: { type: boolean }
+
+    PatientInput:
+      type: object
+      required: [fullName, phone, gender, birthDate, jshshir]
+      properties:
+        fullName: { type: string }
+        phone: { type: string }
+        gender: { type: string, enum: [erkak, ayol] }
+        birthDate: { type: string, format: date }
+        jshshir:
+          type: string
+          minLength: 14
+          maxLength: 14
+          pattern: '^[0-9]{14}$'
+          description: "Majburiy — aniq 14 raqam"
+        address: { type: string }
+        region: { type: string }
+        district: { type: string }
+
+    PromoCode:
+      type: object
+      properties:
+        id: { type: string }
+        code: { type: string }
+        amount: { type: integer }
+        percent: { type: integer }
+        patientId: { type: string, nullable: true }
+        patientName: { type: string, nullable: true }
+        paymentId: { type: string, nullable: true }
+        createdAt: { type: integer, format: int64 }
+        expiresAt: { type: integer, format: int64 }
+        usedAt: { type: integer, format: int64, nullable: true }
+        usedPaymentId: { type: string, nullable: true }
 `;
 
 const swaggerHtml = `<!DOCTYPE html>

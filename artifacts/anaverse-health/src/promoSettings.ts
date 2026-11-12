@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import { makeKvStore } from './lib/dbKv';
 
 export type PromoSettings = {
@@ -32,20 +32,54 @@ export const DEFAULT_PROMO: PromoSettings = {
 };
 
 const settingsStore = makeKvStore<PromoSettings>('ssd-promo-settings', DEFAULT_PROMO);
-const codesStore = makeKvStore<PromoCode[]>('ssd-promo-codes', []);
+
+// --- Promo kodlar DB bilan sinxronlashtiriladi (/api/promo-codes) ---
+let codes: PromoCode[] = [];
+let hydrated = false;
+const listeners = new Set<() => void>();
+function emit() { listeners.forEach((l) => l()); }
+function sub(l: () => void) { listeners.add(l); return () => listeners.delete(l); }
+
+function normalize(row: any): PromoCode {
+  return {
+    id: row.id,
+    code: row.code,
+    amount: row.amount ?? 0,
+    percent: row.percent ?? 0,
+    patientId: row.patientId ?? undefined,
+    patientName: row.patientName ?? undefined,
+    paymentId: row.paymentId ?? undefined,
+    createdAt: Number(row.createdAt) || Date.now(),
+    expiresAt: Number(row.expiresAt) || 0,
+    usedAt: row.usedAt ? Number(row.usedAt) : undefined,
+    usedPaymentId: row.usedPaymentId ?? undefined,
+  };
+}
+
+async function hydrate() {
+  if (hydrated) return;
+  hydrated = true;
+  try {
+    const res = await fetch('/api/promo-codes');
+    const rows: any[] = await res.json();
+    codes = rows.map(normalize);
+    emit();
+  } catch (e) { console.warn('promo hydrate failed', e); }
+}
 
 export function usePromoSettings() {
   return useSyncExternalStore(settingsStore.subscribe, settingsStore.get, settingsStore.get);
 }
-export function usePromoCodes() {
-  return useSyncExternalStore(codesStore.subscribe, codesStore.get, codesStore.get);
+export function usePromoCodes(): PromoCode[] {
+  useEffect(() => { hydrate(); }, []);
+  return useSyncExternalStore(sub, () => codes, () => codes);
 }
 
 export function updatePromoSettings(patch: Partial<PromoSettings>) {
   settingsStore.set((prev) => ({ ...prev, ...patch }));
 }
 export function getPromoSettings() { return settingsStore.get(); }
-export function getPromoCodes() { return codesStore.get(); }
+export function getPromoCodes() { return codes; }
 
 function randomSuffix(len = 4) {
   const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -54,12 +88,12 @@ function randomSuffix(len = 4) {
   return s;
 }
 
-export function generatePromoForPayment(opts: {
+export async function generatePromoForPayment(opts: {
   paymentId?: string;
   paymentTotal: number;
   patientId?: string;
   patientName?: string;
-}): PromoCode | null {
+}): Promise<PromoCode | null> {
   const settings = settingsStore.get();
   if (!settings.enabled) return null;
   if (settings.minAmount > 0 && opts.paymentTotal < settings.minAmount) return null;
@@ -71,10 +105,9 @@ export function generatePromoForPayment(opts: {
   expires.setMonth(expires.getMonth() + Math.max(1, settings.validMonths || 6));
 
   const prefix = (settings.prefix || 'PROMO').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12) || 'PROMO';
-  const code = `${prefix}-${randomSuffix(4)}`;
   const entry: PromoCode = {
     id: `pc_${now}_${Math.random().toString(36).slice(2, 6)}`,
-    code,
+    code: `${prefix}-${randomSuffix(4)}`,
     amount,
     percent: settings.percent,
     patientId: opts.patientId,
@@ -83,19 +116,44 @@ export function generatePromoForPayment(opts: {
     createdAt: now,
     expiresAt: expires.getTime(),
   };
-  codesStore.set((prev) => [entry, ...prev]);
-  return entry;
+  try {
+    const res = await fetch('/api/promo-codes', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(entry),
+    });
+    const saved = normalize(await res.json());
+    codes = [saved, ...codes];
+    emit();
+    return saved;
+  } catch (e) {
+    console.warn('promo save failed', e);
+    return null;
+  }
 }
 
 export function findPromoByCode(code: string): PromoCode | undefined {
   const c = code.trim().toUpperCase();
-  return codesStore.get().find((x) => x.code === c);
+  return codes.find((x) => x.code === c);
 }
 
-export function markPromoUsed(id: string, paymentId?: string) {
-  codesStore.set((prev) => prev.map((c) => (c.id === id ? { ...c, usedAt: Date.now(), usedPaymentId: paymentId } : c)));
+export async function markPromoUsed(id: string, paymentId?: string) {
+  try {
+    const res = await fetch(`/api/promo-codes/${id}/mark-used`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ paymentId }),
+    });
+    const row = normalize(await res.json());
+    codes = codes.map((c) => (c.id === id ? row : c));
+    emit();
+  } catch (e) { console.warn('promo mark-used failed', e); }
 }
 
-export function removePromoCode(id: string) {
-  codesStore.set((prev) => prev.filter((c) => c.id !== id));
+export async function removePromoCode(id: string) {
+  try {
+    await fetch(`/api/promo-codes/${id}`, { method: 'DELETE' });
+    codes = codes.filter((c) => c.id !== id);
+    emit();
+  } catch (e) { console.warn('promo delete failed', e); }
 }

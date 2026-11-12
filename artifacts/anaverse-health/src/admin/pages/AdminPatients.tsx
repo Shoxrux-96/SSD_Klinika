@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
-  Activity, Archive, ArchiveRestore, Calendar, CheckCircle2, ClipboardList, Edit3, Eye,
+  Activity, AlertCircle, Archive, ArchiveRestore, Calendar, CheckCircle2, ClipboardList, Edit3, Eye,
   FileHeart, FileText, Fingerprint, FlaskConical, Heart, Home, IdCard, Map as MapIcon,
   Phone, Pill, Plus, Printer, Save, Search, Stethoscope, Trash2, UserCircle2, Users, X,
 } from 'lucide-react';
@@ -70,15 +70,22 @@ export function AdminPatients() {
   const [tab, setTab] = useState<'active' | 'archived'>('active');
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [query, setQuery] = useState('');
+  const [onlyMissingJshshir, setOnlyMissingJshshir] = useState(false);
   const [viewing, setViewing] = useState<{ patient: Patient; mode: 'view' | 'edit' } | null>(null);
   const [cardFor, setCardFor] = useState<Patient | null>(null);
   const [adding, setAdding] = useState(false);
+
+  const isJshshirValid = (p: Patient) => {
+    const d = (p.jshshir ?? '').replace(/\D/g, '');
+    return d.length === 14;
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return patients
       .filter((p) => (tab === 'active' ? !p.archived : p.archived))
       .filter((p) => matchDate(p.addedAt, dateFilter))
+      .filter((p) => !onlyMissingJshshir || !isJshshirValid(p))
       .filter((p) =>
         !q ||
         p.fullName.toLowerCase().includes(q) ||
@@ -87,9 +94,10 @@ export function AdminPatients() {
         (p.jshshir ?? '').toLowerCase().includes(q),
       )
       .sort((a, b) => b.addedAt - a.addedAt);
-  }, [patients, tab, dateFilter, query]);
+  }, [patients, tab, dateFilter, query, onlyMissingJshshir]);
 
-  const pg = usePagination(filtered, [tab, dateFilter, query, filtered.length]);
+  const pg = usePagination(filtered, [tab, dateFilter, query, onlyMissingJshshir, filtered.length]);
+  const missingJshshirCount = patients.filter((p) => !p.archived && !isJshshirValid(p)).length;
 
   const activeCount = patients.filter((p) => !p.archived).length;
   const archivedCount = patients.filter((p) => p.archived).length;
@@ -174,7 +182,35 @@ export function AdminPatients() {
             placeholder="Ism, telefon yoki manzil bo‘yicha qidirish…"
           />
         </div>
+
+        {missingJshshirCount > 0 && (
+          <button
+            className={`patients-missing-jshshir${onlyMissingJshshir ? ' is-active' : ''}`}
+            onClick={() => setOnlyMissingJshshir((v) => !v)}
+            title="JSHSHIR kiritilmagan yoki noto'g'ri bemorlarni ko'rsatish"
+          >
+            <AlertCircle size={13} />
+            JSHSHIRsiz bemorlar: <strong>{missingJshshirCount}</strong>
+          </button>
+        )}
       </section>
+
+      <style>{`
+        .patients-missing-jshshir {
+          display: inline-flex; align-items: center; gap: 6px;
+          padding: 8px 14px; border-radius: 10px;
+          background: #fef3c7; color: #92400e;
+          border: 1px solid #fde68a; cursor: pointer;
+          font-size: 13px; font-weight: 600;
+          margin-left: 8px;
+          transition: all .15s;
+        }
+        .patients-missing-jshshir:hover { background: #fde68a; }
+        .patients-missing-jshshir.is-active {
+          background: #dc2626; color: #fff; border-color: #dc2626;
+          box-shadow: 0 4px 10px -2px rgba(220, 38, 38, 0.4);
+        }
+      `}</style>
 
       <section className="admin-card">
         <div className="admin-card-head">

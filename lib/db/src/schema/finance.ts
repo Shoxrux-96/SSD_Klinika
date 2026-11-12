@@ -1,4 +1,4 @@
-import { pgTable, text, bigint, integer, index } from "drizzle-orm/pg-core";
+import { pgTable, text, bigint, integer, index, uniqueIndex } from "drizzle-orm/pg-core";
 
 export const transactionsTable = pgTable("transactions", {
   id: text("id").primaryKey(),
@@ -78,7 +78,32 @@ export const techOrdersTable = pgTable(
   }),
 );
 
+// Promo kodlar — har to'lovdan keyin avtomatik generatsiya qilinadi,
+// bemor keyingi tashrifida ushbu kodni ishlatib chegirma oladi.
+export const promoCodesTable = pgTable(
+  "promo_codes",
+  {
+    id: text("id").primaryKey(),
+    code: text("code").notNull(),
+    amount: integer("amount").notNull().default(0),
+    percent: integer("percent").notNull().default(0),
+    patientId: text("patient_id"),
+    patientName: text("patient_name"),
+    paymentId: text("payment_id"),
+    createdAt: bigint("created_at", { mode: "number" }).notNull(),
+    expiresAt: bigint("expires_at", { mode: "number" }).notNull(),
+    usedAt: bigint("used_at", { mode: "number" }),
+    usedPaymentId: text("used_payment_id"),
+  },
+  (t) => ({
+    codeUniq: uniqueIndex("promo_codes_code_uniq").on(t.code),
+    byPatient: index("promo_codes_patient_idx").on(t.patientId),
+    byExpires: index("promo_codes_expires_idx").on(t.expiresAt),
+  }),
+);
+
 export type Transaction = typeof transactionsTable.$inferSelect;
 export type Payroll = typeof payrollsTable.$inferSelect;
 export type Debt = typeof debtsTable.$inferSelect;
 export type TechOrder = typeof techOrdersTable.$inferSelect;
+export type PromoCode = typeof promoCodesTable.$inferSelect;
