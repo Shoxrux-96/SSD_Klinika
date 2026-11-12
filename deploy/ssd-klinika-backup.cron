@@ -1,0 +1,8 @@
+# SSD Klinika — DB avtomatik zaxira
+# /etc/cron.d/ssd-klinika-backup ga joylashtiriladi (install.sh/VPS da)
+# Har kuni 03:00 da ishga tushadi.
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# daqiqa  soat  kun  oy  haftakun  foydalanuvchi  buyruq
+0 3 * * *   ssd   /opt/ssd-klinika/deploy/backup.sh >> /var/log/ssd-klinika-backup.log 2>&1

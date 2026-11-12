@@ -210,6 +210,22 @@ export function AdminPatients() {
           background: #dc2626; color: #fff; border-color: #dc2626;
           box-shadow: 0 4px 10px -2px rgba(220, 38, 38, 0.4);
         }
+        .patient-view-chip.is-warn {
+          background: #fef3c7; color: #92400e; border: 1px solid #fde68a;
+          display: inline-flex; align-items: center; gap: 4px;
+          padding: 3px 10px; border-radius: 999px;
+          font-size: 12px; font-weight: 600;
+        }
+        .patient-missing-banner {
+          display: flex; align-items: center; justify-content: space-between;
+          gap: 12px; margin: 14px 20px 0; padding: 12px 14px;
+          background: linear-gradient(135deg, #fef3c7, #fde68a);
+          border: 1px solid #fcd34d; border-radius: 12px;
+          color: #92400e;
+        }
+        .patient-missing-banner > div { display: flex; align-items: flex-start; gap: 10px; flex: 1; min-width: 0; }
+        .patient-missing-banner strong { display: block; font-size: 13px; }
+        .patient-missing-banner small { display: block; font-size: 12px; margin-top: 2px; opacity: 0.9; }
       `}</style>
 
       <section className="admin-card">
@@ -574,15 +590,34 @@ function PatientProfileModal({
                     <Calendar size={13} /> {age} yosh
                   </span>
                 )}
-                {jshshir && (
+                {jshshir && jshshir.length === 14 ? (
                   <span className="patient-view-chip neutral">
                     <Fingerprint size={13} /> {jshshir}
+                  </span>
+                ) : (
+                  <span className="patient-view-chip is-warn">
+                    <AlertCircle size={13} /> JSHSHIR kiritilmagan
                   </span>
                 )}
               </div>
             </div>
           </div>
         </div>
+
+        {!isEdit && (!jshshir || jshshir.length !== 14) && (
+          <div className="patient-missing-banner">
+            <div>
+              <AlertCircle size={16} />
+              <div>
+                <strong>JSHSHIR kiritilmagan</strong>
+                <small>Bu bemor uchun JSHSHIR maydoni toʻldirilishi kerak. Tahrirlash tugmasini bosib 14 raqamli JSHSHIR kiriting.</small>
+              </div>
+            </div>
+            <button type="button" className="admin-btn admin-btn-brand sm" onClick={() => setMode('edit')}>
+              <Edit3 size={13} /> JSHSHIR kiritish
+            </button>
+          </div>
+        )}
 
         <div className="patient-view-body-pro single">
           <div className="patient-view-group">
