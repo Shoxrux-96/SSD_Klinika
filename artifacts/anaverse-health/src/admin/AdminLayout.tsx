@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth, type Role } from '../auth/AuthContext';
 import {
   Activity,
   Bell,
@@ -30,55 +31,79 @@ import {
   X,
 } from 'lucide-react';
 
-type NavItem = { to: string; end?: boolean; icon: typeof Users; label: string };
+type NavItem = { to: string; end?: boolean; icon: typeof Users; label: string; roles?: Role[] };
 type NavSection = { key: string; label: string; items: NavItem[] };
+
+const ALL: Role[] = ['admin', 'shifokor', 'laborant', 'registrator', 'kassir', 'buxgalter'];
+const ADMIN: Role[] = ['admin'];
+const FRONTDESK: Role[] = ['admin', 'registrator', 'shifokor'];
+const FINANCE_REG: Role[] = ['admin', 'kassir', 'buxgalter', 'registrator'];
+const FINANCE: Role[] = ['admin', 'kassir', 'buxgalter'];
+const DOCTORS: Role[] = ['admin', 'shifokor'];
+const LAB: Role[] = ['admin', 'laborant', 'shifokor'];
+const REPORTS: Role[] = ['admin', 'kassir', 'buxgalter', 'shifokor'];
+const INVENTORY: Role[] = ['admin', 'shifokor', 'kassir', 'buxgalter'];
 
 const sections: NavSection[] = [
   { key: 'bemorlar', label: 'Qabul va Bemorlar', items: [
-    { to: '/admin/appointments', icon: CalendarCheck, label: 'Qabullar' },
-    { to: '/admin/queue', icon: ListOrdered, label: 'Navbat' },
-    { to: '/admin/patients', icon: Users, label: 'Bemorlar' },
+    { to: '/admin/appointments', icon: CalendarCheck, label: 'Qabullar', roles: FRONTDESK },
+    { to: '/admin/queue', icon: ListOrdered, label: 'Navbat', roles: FRONTDESK },
+    { to: '/admin/patients', icon: Users, label: 'Bemorlar', roles: ALL },
   ]},
   { key: 'hr', label: 'Hodimlar bo‘limi', items: [
-    { to: '/admin/staff', icon: Stethoscope, label: 'Shifokorlar' },
-    { to: '/admin/workers', icon: UserCog, label: 'Hodimlar' },
-    { to: '/admin/attendance', icon: CalendarCheck, label: 'Davomat' },
-    { to: '/admin/payroll', icon: Wallet, label: 'Oylik maosh va ulushlar' },
+    { to: '/admin/staff', icon: Stethoscope, label: 'Shifokorlar', roles: ALL },
+    { to: '/admin/workers', icon: UserCog, label: 'Hodimlar', roles: ADMIN },
+    { to: '/admin/attendance', icon: CalendarCheck, label: 'Davomat', roles: ALL },
+    { to: '/admin/payroll', icon: Wallet, label: 'Oylik maosh va ulushlar', roles: FINANCE_REG },
   ]},
   { key: 'moliya', label: 'Xizmatlar bo‘limi', items: [
-    { to: '/admin/services', icon: Briefcase, label: 'Xizmatlar' },
-    { to: '/admin/assignments', icon: Link2, label: 'Xizmat biriktirish' },
+    { to: '/admin/services', icon: Briefcase, label: 'Xizmatlar', roles: ALL },
+    { to: '/admin/assignments', icon: Link2, label: 'Xizmat biriktirish', roles: ADMIN },
   ]},
   { key: 'davolash', label: 'Davolash bo‘limi', items: [
-    { to: '/admin/treatments', icon: ClipboardList, label: 'Davolash tarixi' },
-    { to: '/admin/prescriptions', icon: Pill, label: 'Retseptlar' },
-    { to: '/admin/laboratory', icon: FlaskConical, label: 'Laboratoriya' },
-    { to: '/admin/tech-products', icon: Package, label: 'Texnik buyurtma' },
+    { to: '/admin/treatments', icon: ClipboardList, label: 'Davolash tarixi', roles: DOCTORS },
+    { to: '/admin/prescriptions', icon: Pill, label: 'Retseptlar', roles: DOCTORS },
+    { to: '/admin/laboratory', icon: FlaskConical, label: 'Laboratoriya', roles: LAB },
+    { to: '/admin/tech-products', icon: Package, label: 'Texnik buyurtma', roles: INVENTORY },
   ]},
   { key: 'boshqaruv', label: 'Boshqaruv bo‘limi', items: [
-    { to: '/admin/roles', icon: Shield, label: 'Rollar va huquqlar' },
-    { to: '/admin/audit', icon: Activity, label: 'Audit log' },
-    { to: '/admin/settings', icon: Settings, label: 'Sozlamalar' },
+    { to: '/admin/roles', icon: Shield, label: 'Rollar va huquqlar', roles: ADMIN },
+    { to: '/admin/audit', icon: Activity, label: 'Audit log', roles: ADMIN },
+    { to: '/admin/settings', icon: Settings, label: 'Sozlamalar', roles: ALL },
   ]},
 ];
 
 const topItems: NavItem[] = [
-  { to: '/admin', end: true, icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/admin/reports', icon: FileBarChart, label: 'Hisobotlar' },
-  { to: '/admin/cashier', icon: Receipt, label: 'Kassa' },
-  { to: '/admin/finance', icon: Wallet, label: 'Moliya' },
-  { to: '/admin/call-center', icon: PhoneCall, label: 'Call markaz' },
+  { to: '/admin', end: true, icon: LayoutDashboard, label: 'Dashboard', roles: ALL },
+  { to: '/admin/reports', icon: FileBarChart, label: 'Hisobotlar', roles: REPORTS },
+  { to: '/admin/cashier', icon: Receipt, label: 'Kassa', roles: FINANCE_REG },
+  { to: '/admin/finance', icon: Wallet, label: 'Moliya', roles: FINANCE_REG },
+  { to: '/admin/call-center', icon: PhoneCall, label: 'Call markaz', roles: FRONTDESK },
 ];
+
+function canSee(item: NavItem, role: Role | undefined): boolean {
+  if (!role) return false;
+  if (role === 'admin') return true;
+  if (!item.roles || item.roles.length === 0) return true;
+  return item.roles.includes(role);
+}
 
 export function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
+  const role = user?.role;
+
+  const visibleTopItems = topItems.filter((it) => canSee(it, role));
+  const visibleSections = sections
+    .map((s) => ({ ...s, items: s.items.filter((it) => canSee(it, role)) }))
+    .filter((s) => s.items.length > 0);
 
   // Which section is currently active?
-  const activeSection = sections.find((s) =>
+  const activeSection = visibleSections.find((s) =>
     s.items.some((item) => item.end ? location.pathname === item.to : location.pathname.startsWith(item.to)),
-  )?.key ?? sections[0].key;
+  )?.key ?? visibleSections[0]?.key ?? '';
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => ({ [activeSection]: true }));
 
@@ -104,7 +129,7 @@ export function AdminLayout() {
 
         <nav className="admin-nav">
           <div className="admin-nav-top">
-            {topItems.map((item, idx) => (
+            {visibleTopItems.map((item, idx) => (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -119,7 +144,7 @@ export function AdminLayout() {
               </NavLink>
             ))}
           </div>
-          {sections.map((section) => {
+          {visibleSections.map((section) => {
             const isOpen = !!openSections[section.key];
             const hasActive = section.items.some((item) =>
               item.end ? location.pathname === item.to : location.pathname.startsWith(item.to),

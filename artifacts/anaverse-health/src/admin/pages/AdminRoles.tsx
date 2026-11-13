@@ -85,7 +85,6 @@ const PERMISSIONS: Permission[] = [
   { key: 'write_treatment', group: 'clinical',  label: "Davolash yozuvi",                icon: FileText,        roles: ['admin', 'shifokor'] },
   { key: 'write_rx',        group: 'clinical',  label: "Retsept yozish",                 icon: Pill,            roles: ['admin', 'shifokor'] },
   { key: 'write_lab',       group: 'clinical',  label: "Tahlil natijalari",              icon: Microscope,      roles: ['admin', 'shifokor', 'laborant'] },
-  { key: 'write_dental',    group: 'clinical',  label: "Tish xaritasi",                  icon: Smile,           roles: ['admin', 'shifokor'] },
 
   // Moliya
   { key: 'read_finance',    group: 'finance',   label: "Tranzaksiyalar / qarzlar",       icon: Receipt,         roles: ['admin', 'kassir', 'buxgalter'] },

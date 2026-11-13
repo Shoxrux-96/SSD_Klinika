@@ -73,7 +73,7 @@ async function updateEmployee(req: any, res: any) {
     // Oddiy maydonlar
     for (const k of [
       "category", "photo", "fullName", "phone", "email",
-      "position", "specialty", "experience", "diploma", "archived", "username",
+      "position", "specialty", "experience", "diploma", "archived", "username", "workHours", "offDates",
     ]) {
       if (b[k] !== undefined) patch[k] = b[k];
     }

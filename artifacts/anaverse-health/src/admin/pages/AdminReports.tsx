@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Activity, CalendarCheck, Stethoscope, Users, TrendingUp, TrendingDown,
   FlaskConical, Wallet, PhoneCall, Package, FileBarChart, AlertCircle,
-  Download, UserRound, ClipboardList, Pill, Smile, Receipt, Award,
+  Download, UserRound, ClipboardList, Pill, Receipt, Award,
 } from 'lucide-react';
 import { useAppointments, usePatients, useQueue, useEmployees, useServices } from '../store';
 import { useTreatments, usePrescriptions, useLabTests } from '../clinicalData';
@@ -19,7 +19,7 @@ import {
 
 type Tab =
   | 'overview' | 'patients' | 'appointments' | 'clinical' | 'laboratory'
-  | 'dental' | 'finance' | 'staff' | 'callcenter' | 'inventory';
+  | 'finance' | 'staff' | 'callcenter' | 'inventory';
 
 type Txn = {
   id: string;
@@ -80,7 +80,6 @@ export function AdminReports() {
   const [callTasks, setCallTasks] = useState<CallTask[]>([]);
   const [techOrders, setTechOrders] = useState<any[]>([]);
   const [techProducts, setTechProducts] = useState<any[]>([]);
-  const [dental, setDental] = useState<any[]>([]);
   const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
 
   // Real-time refresh — har 15 soniyada API yangilanadi
@@ -88,19 +87,17 @@ export function AdminReports() {
     let cancelled = false;
     const load = async () => {
       try {
-        const [t, c, to, tp, dr] = await Promise.all([
+        const [t, c, to, tp] = await Promise.all([
           fetch('/api/transactions').then((r) => r.ok ? r.json() : []),
           fetch('/api/call-tasks').then((r) => r.ok ? r.json() : []),
           fetch('/api/tech-orders').then((r) => r.ok ? r.json() : []),
           fetch('/api/tech-products').then((r) => r.ok ? r.json() : []),
-          fetch('/api/dental-records').then((r) => r.ok ? r.json() : []),
         ]);
         if (cancelled) return;
         setTxns(Array.isArray(t) ? t : []);
         setCallTasks(Array.isArray(c) ? c : []);
         setTechOrders(Array.isArray(to) ? to : []);
         setTechProducts(Array.isArray(tp) ? tp : []);
-        setDental(Array.isArray(dr) ? dr : []);
         setLastRefresh(Date.now());
       } catch {}
     };
@@ -143,7 +140,6 @@ export function AdminReports() {
           ['appointments','Qabullar',     CalendarCheck],
           ['clinical',    'Davolash',     Stethoscope],
           ['laboratory',  'Laboratoriya', FlaskConical],
-          ['dental',      'Tish xaritasi', Smile],
           ['finance',     'Moliya',       Wallet],
           ['staff',       'Hodimlar',     Users],
           ['callcenter',  'Call-markaz',  PhoneCall],
@@ -166,7 +162,6 @@ export function AdminReports() {
       {tab === 'appointments' && <AppointmentsReport appts={appts} from={from} services={services} chartP={chartP} />}
       {tab === 'clinical' && <ClinicalReport treatments={treatments} prescriptions={prescriptions} from={from} chartP={chartP} />}
       {tab === 'laboratory' && <LaboratoryReport labs={labs} fromMs={fromMs} chartP={chartP} />}
-      {tab === 'dental' && <DentalReport records={dental} fromMs={fromMs} chartP={chartP} />}
       {tab === 'finance' && <FinanceReport txns={txns} debts={debts} fromMs={fromMs} chartP={chartP} period={period} />}
       {tab === 'staff' && <StaffReport employees={employees} treatments={treatments} from={from} />}
       {tab === 'callcenter' && <CallCenterReport tasks={callTasks} fromMs={fromMs} chartP={chartP} />}
@@ -549,52 +544,6 @@ function LaboratoryReport({ labs, fromMs, chartP }: any) {
         </ChartCard>
         <ChartCard title="Laborantlar reytingi" sum={`${topLaborants.length} ta`}>
           <TopList rows={topLaborants} color="#0891b2" />
-        </ChartCard>
-      </div>
-    </>
-  );
-}
-
-/* ========== TISH XARITASI ========== */
-function DentalReport({ records, fromMs, chartP }: any) {
-  const inPeriod = records.filter((r: any) => (r.createdAt ?? 0) >= fromMs);
-
-  const condDonut = useMemo<TopRow[]>(() => {
-    const m: Record<string, number> = {};
-    for (const r of inPeriod) m[r.condition] = (m[r.condition] ?? 0) + 1;
-    const label: Record<string, string> = {
-      soglom: "Sog'lom", kariyes: 'Kariyes', plomba: 'Plomba', ildiz: 'Ildiz',
-      tojsiz: "Toj yo'q", olingan: 'Olingan', implant: 'Implant', koronka: 'Koronka', protez: 'Protez',
-    };
-    return Object.entries(m).map(([k, v]) => ({ label: label[k] ?? k, value: v }));
-  }, [inPeriod]);
-
-  const toothCount = useMemo<TopRow[]>(() => {
-    const m: Record<string, number> = {};
-    for (const r of inPeriod) m[r.tooth] = (m[r.tooth] ?? 0) + 1;
-    return Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([label, value]) => ({ label: `Tish ${label}`, value }));
-  }, [inPeriod]);
-
-  const dailySeries = useMemo(() => bucketize(inPeriod, (r: any) => r.createdAt, () => 1, chartP), [inPeriod, chartP]);
-
-  return (
-    <>
-      <div className="rep-mini-grid">
-        <div className="rep-mini"><small>Jami yozuv</small><strong>{inPeriod.length}</strong></div>
-        <div className="rep-mini"><small>Kariyes</small><strong style={{ color: '#dc2626' }}>{inPeriod.filter((r: any) => r.condition === 'kariyes').length}</strong></div>
-        <div className="rep-mini"><small>Plomba</small><strong style={{ color: '#4f46e5' }}>{inPeriod.filter((r: any) => r.condition === 'plomba').length}</strong></div>
-        <div className="rep-mini"><small>Olingan tish</small><strong style={{ color: '#64748b' }}>{inPeriod.filter((r: any) => r.condition === 'olingan').length}</strong></div>
-      </div>
-
-      <div className="rep-chart-grid">
-        <ChartCard title="Tish holatlari" sum={`${inPeriod.length} ta`}>
-          <DonutChart rows={condDonut} />
-        </ChartCard>
-        <ChartCard title="Yozuvlar dinamikasi" sum={`${inPeriod.length} ta`}>
-          <LineChart data={dailySeries} color="#059669" />
-        </ChartCard>
-        <ChartCard title="Eng ko'p ishlangan tishlar (FDI)" sum={`${toothCount.length} ta`} wide>
-          <BarChart data={toothCount} color="#7c3aed" />
         </ChartCard>
       </div>
     </>

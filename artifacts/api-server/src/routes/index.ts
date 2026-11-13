@@ -13,10 +13,12 @@ import systemRouter from "./system";
 import reportsRouter from "./reports";
 import callCenterRouter from "./callcenter";
 import authRouter from "./auth";
+import publicRouter from './public';
 
 const router: IRouter = Router();
 
 router.use(authRouter);
+router.use(publicRouter);
 router.use(healthRouter);
 router.use(docsRouter);
 router.use(patientsRouter);

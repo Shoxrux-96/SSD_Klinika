@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import {
   ArrowDown,
   ArrowRight,
@@ -28,8 +28,39 @@ import { useNavigate } from 'react-router-dom';
 import { Facebook, Globe, Youtube } from 'lucide-react';
 import { useAuth } from './auth/AuthContext';
 import { ClinicMap } from './ClinicMap';
-import { SkeletonModel } from './SkeletonModel';
-import { addAppointment, addPatient, useAssignments, useEmployees, useServices } from './admin/store';
+const LazySkeletonModel = lazy(() => import('./SkeletonModel').then((m) => ({ default: m.SkeletonModel })));
+
+function SkeletonLazy() {
+  return (
+    <Suspense fallback={<div style={{width:'100%',height:'100%'}} aria-hidden />}>
+      <LazySkeletonModel />
+    </Suspense>
+  );
+}
+import { useAssignments, useEmployees, useServices } from './admin/store';
+
+const PUBLIC_HOURS: string[] = (() => {
+  const list: string[] = [];
+  for (let m = 9 * 60; m < 23 * 60; m += 30) {
+    const h = Math.floor(m / 60);
+    const mm = m % 60;
+    list.push(`${String(h).padStart(2, '0')}:${String(mm).padStart(2, '0')}`);
+  }
+  return list;
+})();
+
+function slotRangeLabel(start: string) {
+  const [h, m] = start.split(':').map(Number);
+  const end = h * 60 + m + 30;
+  const eh = Math.floor(end / 60);
+  const em = end % 60;
+  return `${start}–${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+}
+
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 import { useContactSettings, telHref, type SocialPlatform } from './contactSettings';
 
 const SOCIAL_ICON: Record<SocialPlatform, typeof Instagram> = {
@@ -79,104 +110,75 @@ function DoctorCarousel() {
     );
     return services.filter((s) => !s.archived && ids.has(s.id));
   };
-  const [page, setPage] = useState(0);
-  const perPage = 3;
-  const totalPages = Math.max(1, Math.ceil(doctors.length / perPage));
-  const safePage = Math.min(page, totalPages - 1);
-  const hasCarousel = doctors.length > perPage;
 
-  useEffect(() => {
-    if (!hasCarousel) return;
-    const id = window.setInterval(() => {
-      setPage((p) => (p + 1) % totalPages);
-    }, 5000);
-    return () => window.clearInterval(id);
-  }, [hasCarousel, totalPages]);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const hasCarousel = doctors.length > 3;
+
+  const scrollBy = (dir: 1 | -1) => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const card = el.querySelector<HTMLElement>('.doctor-card');
+    const step = card ? card.offsetWidth + 14 : el.clientWidth * 0.8;
+    el.scrollBy({ left: dir * step, behavior: 'smooth' });
+  };
 
   if (doctors.length === 0) {
     return <div className="doctor-grid-empty">Xizmat biriktirilgan shifokor mavjud emas.</div>;
   }
 
   return (
-    <div className={`doctor-carousel${hasCarousel ? ' has-nav' : ''}`}>
+    <div className={`doctor-carousel${hasCarousel ? ' has-nav is-scroll' : ''}`}>
       {hasCarousel && (
         <button
           type="button"
           className="doctor-nav prev"
           aria-label="Oldingi"
-          onClick={() => setPage((p) => (p - 1 + totalPages) % totalPages)}
+          onClick={() => scrollBy(-1)}
         >
           <ChevronLeft size={20} />
         </button>
       )}
-      <div className="doctor-viewport">
-        <div
-          className="doctor-track"
-          style={{
-            width: `${totalPages * 100}%`,
-            transform: `translateX(-${safePage * (100 / totalPages)}%)`,
-          }}
-        >
-          {Array.from({ length: totalPages }).map((_, p) => {
-            const slice = doctors.slice(p * perPage, p * perPage + perPage);
-            return (
-              <div key={p} className="doctor-slide" style={{ width: `${100 / totalPages}%` }}>
-                <div className="doctor-grid">
-                  {slice.map((d) => (
-                    <article className="doctor-card" key={d.id}>
-                      <img
-                        src={d.photo || '/assets/doctor-default.jpg'}
-                        alt={`${d.fullName}, shifokor`}
-                      />
-                      <div className="doctor-card-copy">
-                        <strong>{d.fullName}</strong>
-                        <span>{d.position}{d.specialty ? `, ${d.specialty}` : ''}</span>
-                        {(() => {
-                          const svcs = servicesFor(d.id);
-                          if (svcs.length === 0) return null;
-                          return (
-                            <div className="doctor-services-wrap">
-                              <button type="button" className="doctor-services-btn">Xizmatlar ({svcs.length})</button>
-                              <div className="doctor-services-pop">
-                                <strong>Biriktirilgan xizmatlar</strong>
-                                <ul>
-                                  {svcs.map((s) => <li key={s.id}>{s.name}</li>)}
-                                </ul>
-                              </div>
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+      <div
+        ref={scrollerRef}
+        className={hasCarousel ? 'doctor-scroller' : 'doctor-grid'}
+      >
+        {doctors.map((d) => (
+          <article className="doctor-card" key={d.id}>
+            <img
+              src={d.photo || '/assets/doctor-default.jpg'}
+              alt={`${d.fullName}, shifokor`}
+              loading="lazy" decoding="async" />
+            <div className="doctor-card-copy">
+              <strong>{d.fullName}</strong>
+              <span>{d.position}{d.specialty ? `, ${d.specialty}` : ''}</span>
+              {(() => {
+                const svcs = servicesFor(d.id);
+                if (svcs.length === 0) return null;
+                return (
+                  <div className="doctor-services-wrap">
+                    <button type="button" className="doctor-services-btn">Xizmatlar ({svcs.length})</button>
+                    <div className="doctor-services-pop">
+                      <strong>Biriktirilgan xizmatlar</strong>
+                      <ul>
+                        {svcs.map((s) => <li key={s.id}>{s.name}</li>)}
+                      </ul>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </article>
+        ))}
       </div>
       {hasCarousel && (
         <button
           type="button"
           className="doctor-nav next"
           aria-label="Keyingi"
-          onClick={() => setPage((p) => (p + 1) % totalPages)}
+          onClick={() => scrollBy(1)}
         >
           <ChevronRight size={20} />
         </button>
-      )}
-      {hasCarousel && (
-        <div className="doctor-dots">
-          {Array.from({ length: totalPages }).map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              className={`doctor-dot${i === safePage ? ' active' : ''}`}
-              onClick={() => setPage(i)}
-              aria-label={`${i + 1}-sahifa`}
-            />
-          ))}
-        </div>
       )}
     </div>
   );
@@ -224,7 +226,7 @@ function AnatomyExperience() {
         <div className="scene-orbit orbit-one" aria-hidden="true" />
         <div className="scene-orbit orbit-two" aria-hidden="true" />
         <div className="scene-caption"><span className="scene-live-dot" /> ANATOMIYA / 01</div>
-        <img className="anatomy-body" src="/assets/anatomy-hero.png" alt="Inson tanasining ichki a’zolari ko‘rsatilgan anatomik tasvir" data-testid="img-anatomy-body" />
+        <img className="anatomy-body" src="/assets/anatomy-hero.png" alt="Inson tanasining ichki a’zolari ko‘rsatilgan anatomik tasvir" data-testid="img-anatomy-body" fetchPriority="high" decoding="async" />
         {anatomyItems.map((item) => (
           <button
             key={item.id}
@@ -235,7 +237,7 @@ function AnatomyExperience() {
             aria-pressed={active.id === item.id}
             data-testid={`button-anatomy-${item.id}`}
           >
-            <img src={item.image} alt="" />
+            <img src={item.image} alt=""  loading="lazy" decoding="async" />
             <span>{item.label}</span>
           </button>
         ))}
@@ -282,6 +284,41 @@ function App() {
   const [apptPhone, setApptPhone] = useState('');
   const [apptDoctor, setApptDoctor] = useState('');
   const [apptService, setApptService] = useState('');
+  const [apptDate, setApptDate] = useState(todayISO());
+  const [apptTime, setApptTime] = useState('');
+
+  const [busySlots, setBusySlots] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!apptDoctor || !apptDate) { setBusySlots(new Set()); return; }
+    const ctrl = new AbortController();
+    const url = `/api/public/busy-slots?date=${encodeURIComponent(apptDate)}&doctorId=${encodeURIComponent(apptDoctor)}`;
+    fetch(url, { signal: ctrl.signal })
+      .then((r) => r.ok ? r.json() : { busy: [] })
+      .then((j) => setBusySlots(new Set<string>(j?.busy ?? [])))
+      .catch(() => {});
+    return () => ctrl.abort();
+  }, [apptDoctor, apptDate]);
+
+  // Bugungi kun uchun o'tgan vaqtlarni ham "band" deb hisoblash
+  const effectiveBusy = useMemo(() => {
+    const s = new Set(busySlots);
+    if (apptDate === todayISO()) {
+      const now = new Date();
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+      for (const h of PUBLIC_HOURS) {
+        const [hh, mm] = h.split(':').map(Number);
+        if (hh * 60 + mm <= nowMin) s.add(h);
+      }
+    }
+    return s;
+  }, [busySlots, apptDate]);
+
+  useEffect(() => {
+    if (!apptDoctor || !apptDate) return;
+    if (apptTime && !effectiveBusy.has(apptTime)) return;
+    const first = PUBLIC_HOURS.find((h) => !effectiveBusy.has(h));
+    setApptTime(first ?? '');
+  }, [apptDoctor, apptDate, effectiveBusy, apptTime]);
 
   const apptAvailableServices = useMemo(() => {
     const emp = publicDoctors.find((e) => e.id === apptDoctor);
@@ -300,47 +337,73 @@ function App() {
     }
   }, [apptAvailableServices, apptService]);
 
-  const nextSlotToday = () => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
-    const totalMin = now.getHours() * 60 + now.getMinutes();
-    let slot = Math.ceil(totalMin / 30) * 30;
-    if (slot < 9 * 60) slot = 9 * 60;
-    if (slot >= 23 * 60) {
-      const t = new Date(now);
-      t.setDate(t.getDate() + 1);
-      return {
-        date: `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`,
-        time: '09:00',
-      };
-    }
-    const h = Math.floor(slot / 60);
-    const mm = slot % 60;
-    return { date: `${y}-${m}-${d}`, time: `${String(h).padStart(2, '0')}:${String(mm).padStart(2, '0')}` };
-  };
-
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const [apptError, setApptError] = useState<string | null>(null);
+  const [apptBusy, setApptBusy] = useState(false);
+  const turnstileSiteKey = (import.meta as any).env?.VITE_TURNSTILE_SITE_KEY as string | undefined;
+  const [turnstileToken, setTurnstileToken] = useState<string>('');
+  useEffect(() => {
+    if (!turnstileSiteKey) return;
+    if (document.querySelector('script[data-turnstile]')) return;
+    const s = document.createElement('script');
+    s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+    s.async = true; s.defer = true; s.dataset.turnstile = '1';
+    document.head.appendChild(s);
+    (window as any).onTurnstileOK = (t: string) => setTurnstileToken(t);
+    (window as any).onTurnstileExpired = () => setTurnstileToken('');
+  }, [turnstileSiteKey]);
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setApptError(null);
+    const form = event.currentTarget;
     const doctor = publicDoctors.find((e) => e.id === apptDoctor);
     const service = apptAvailableServices.find((s) => s.id === apptService);
     if (!doctor || !service || !apptName.trim() || !apptPhone.trim()) return;
-    const { date, time } = nextSlotToday();
-    addAppointment({
-      patient: apptName.trim(),
-      date,
-      time,
-      doctor: doctor.fullName,
-      doctorId: doctor.id,
-      service: service.name,
-      serviceId: service.id,
-    });
-    addPatient({ fullName: apptName.trim(), phone: apptPhone.trim(), address: '' });
-    setSubmitted(true);
-    setApptName('');
-    setApptPhone('');
-    event.currentTarget.reset();
+    if (!apptDate || !apptTime) { setApptError('Sana va vaqtni tanlang'); return; }
+    if (effectiveBusy.has(apptTime)) { setApptError('Bu vaqt band — boshqa vaqtni tanlang'); return; }
+    setApptBusy(true);
+    try {
+      const resp = await fetch('/api/public/appointment', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          fullName: apptName.trim(),
+          phone: apptPhone.trim(),
+          date: apptDate,
+          time: apptTime,
+          doctor: doctor.fullName,
+          doctorId: doctor.id,
+          service: service.name,
+          serviceId: service.id,
+          turnstileToken: turnstileToken || undefined,
+        }),
+      });
+      if (resp.status === 409) {
+        setApptError('Bu vaqt endigina band bo‘ldi. Iltimos, boshqa vaqtni tanlang.');
+        try { const j = await resp.json(); if (j?.error) setApptError(j.error); } catch {}
+        // refresh busy slots
+        setBusySlots((prev) => new Set([...prev, apptTime]));
+        return;
+      }
+      if (resp.status === 429) {
+        setApptError('Juda ko‘p so‘rov yuborildi. Birozdan keyin qayta urinib ko‘ring.');
+        return;
+      }
+      if (!resp.ok) {
+        try { const j = await resp.json(); setApptError(j?.error ?? 'So‘rovni yuborib bo‘lmadi.'); }
+        catch { setApptError('So‘rovni yuborib bo‘lmadi.'); }
+        return;
+      }
+      setSubmitted(true);
+      setApptName('');
+      setApptPhone('');
+      form.reset();
+      setApptDate(todayISO());
+      setApptTime('');
+    } catch {
+      setApptError('Internetni tekshirib qayta urinib ko‘ring.');
+    } finally {
+      setApptBusy(false);
+    }
   };
 
   const { login } = useAuth();
@@ -455,7 +518,7 @@ function App() {
             <div className="about-tooth-sparkle about-tooth-sparkle-1" />
             <div className="about-tooth-sparkle about-tooth-sparkle-2" />
             <div className="about-tooth-sparkle about-tooth-sparkle-3" />
-            <img src="/assets/tooth-model.png" alt="3D tish modeli" className="about-tooth-img" />
+            <img src="/assets/tooth-model.png" alt="3D tish modeli" className="about-tooth-img"  loading="lazy" decoding="async" />
             <div className="about-image-badge">
               <strong>SSD</strong>
               <span>Sirius Stoma Dent Diagnostika markazi</span>
@@ -484,7 +547,7 @@ function App() {
             <div className="service-grid">
               {services.map((service) => (
                 <button className={`service-card${selectedService === service.title ? ' selected' : ''}`} key={service.key} onClick={() => selectService(service.title)} aria-pressed={selectedService === service.title}>
-                  <img className="organ-image" src={`/assets/${service.image}`} alt={`${service.title} uchun anatomik tibbiy tasvir`} />
+                  <img className="organ-image" src={`/assets/${service.image}`} alt={`${service.title} uchun anatomik tibbiy tasvir`}  loading="lazy" decoding="async" />
                   <span className="service-info"><strong>{service.title}</strong><span>{service.description}</span></span>
                   <ChevronRight className="service-arrow" size={16} />
                 </button>
@@ -515,9 +578,9 @@ function App() {
               <a className="button button-white" href="#contact">Markazga tashrif <ArrowRight size={15} /></a>
             </div>
             <div className="facility-mosaic">
-              <div className="facility-tile"><img src="/assets/facility-imaging.jpg" alt="Zamonaviy diagnostika xonasi" /><span>Diagnostika markazi</span></div>
-              <div className="facility-tile"><img src="/assets/hospital-building.jpg" alt="Klinikaning yorug‘ va zamonaviy muhiti" /><span>Qulay shifoxona</span></div>
-              <div className="facility-tile"><img src="/assets/hero-care.jpg" alt="Bemorlar uchun g‘amxo‘r muhit" /><span>Mehrli parvarish</span></div>
+              <div className="facility-tile"><img src="/assets/facility-imaging.jpg" alt="Zamonaviy diagnostika xonasi"  loading="lazy" decoding="async" /><span>Diagnostika markazi</span></div>
+              <div className="facility-tile"><img src="/assets/hospital-building.jpg" alt="Klinikaning yorug‘ va zamonaviy muhiti"  loading="lazy" decoding="async" /><span>Qulay shifoxona</span></div>
+              <div className="facility-tile"><img src="/assets/hero-care.jpg" alt="Bemorlar uchun g‘amxo‘r muhit"  loading="lazy" decoding="async" /><span>Mehrli parvarish</span></div>
             </div>
           </div>
         </section>
@@ -536,12 +599,12 @@ function App() {
           <div className="anatomy-showcase-stage">
             <div className="anatomy-showcase-glow" />
             <div className="anatomy-showcase-item anatomy-showcase-skeleton">
-              <SkeletonModel />
+              <SkeletonLazy />
               <span className="anatomy-showcase-caption">Skelet tizimi</span>
             </div>
             <div className="anatomy-showcase-item anatomy-showcase-muscles">
               <div className="anatomy-showcase-tilt">
-                <img src="/assets/anatomy-body-3d.png" alt="Inson tanasining mushaklari va a’zolari" className="anatomy-showcase-img" />
+                <img src="/assets/anatomy-body-3d.png" alt="Inson tanasining mushaklari va a’zolari" className="anatomy-showcase-img"  loading="lazy" decoding="async" />
               </div>
               <span className="anatomy-showcase-caption">Mushak va a’zolar</span>
             </div>
@@ -586,9 +649,53 @@ function App() {
                   ))}
                 </select>
               </div>
+              <div className="field">
+                <label htmlFor="appointment-date">Sana</label>
+                <input
+                  id="appointment-date"
+                  name="date"
+                  type="date"
+                  value={apptDate}
+                  min={todayISO()}
+                  onChange={(e) => setApptDate(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="appointment-time">Vaqt</label>
+                <select
+                  id="appointment-time"
+                  name="time"
+                  value={apptTime}
+                  onChange={(e) => setApptTime(e.target.value)}
+                  disabled={!apptDoctor || !apptDate}
+                  required
+                >
+                  {(!apptDoctor || !apptDate) && <option value="">Avval shifokor va sanani tanlang</option>}
+                  {apptDoctor && apptDate && PUBLIC_HOURS.map((h) => {
+                    const busy = effectiveBusy.has(h);
+                    return (
+                      <option key={h} value={h} disabled={busy}>
+                        {slotRangeLabel(h)}{busy ? ' — band' : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
             </div>
-            <button className="button button-primary form-submit" type="submit" disabled={!apptDoctor || !apptService}>Qabul so‘rovini yuborish <ArrowRight size={17} /></button>
-            {submitted && <div className="form-message" role="status"><Check size={18} /> So‘rovingiz qabul qilindi. Klinika jamoasi tez orada siz bilan bog‘lanadi.</div>}
+            {turnstileSiteKey && (
+              <div
+                className="cf-turnstile"
+                data-sitekey={turnstileSiteKey}
+                data-callback="onTurnstileOK"
+                data-expired-callback="onTurnstileExpired"
+                data-theme="dark"
+                style={{ marginTop: 8 }}
+              />
+            )}
+            <button className="button button-primary form-submit" type="submit" disabled={apptBusy || !apptDoctor || !apptService || !apptDate || !apptTime || effectiveBusy.has(apptTime) || (!!turnstileSiteKey && !turnstileToken)}>{apptBusy ? 'Yuborilyapti…' : 'Qabul so‘rovini yuborish'} <ArrowRight size={17} /></button>
+            {apptError && <div className="form-message" role="alert" style={{color:'#ff8a7a'}}>{apptError}</div>}
+            {submitted && !apptError && <div className="form-message" role="status"><Check size={18} /> So‘rovingiz qabul qilindi. Klinika jamoasi tez orada siz bilan bog‘lanadi.</div>}
           </form>
         </section>
 
@@ -603,7 +710,7 @@ function App() {
               <X size={20} />
             </button>
             <div className="login-visual">
-              <SkeletonModel />
+              <SkeletonLazy />
             </div>
             <form className="login-form" onSubmit={handleLoginSubmit}>
               <div className="login-header">

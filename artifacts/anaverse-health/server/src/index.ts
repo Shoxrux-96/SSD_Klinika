@@ -135,6 +135,16 @@ app.get('/api/appointments', async (_req, res) => {
 });
 app.post('/api/appointments', async (req, res) => {
   const b = req.body; const id = uid();
+  if (!b?.date || !b?.time || !b?.patient || !b?.doctor || !b?.service) {
+    return res.status(400).json({ error: 'missing_fields' });
+  }
+  const conflict = await pool.query(
+    "SELECT 1 FROM appointments WHERE date = $1 AND time = $2 AND doctor = $3 AND status <> 'bekor' LIMIT 1",
+    [b.date, b.time, b.doctor],
+  );
+  if (conflict.rowCount && conflict.rowCount > 0) {
+    return res.status(409).json({ error: 'slot_taken' });
+  }
   await pool.query(
     'INSERT INTO appointments (id, date, time, patient, doctor, service, status) VALUES ($1,$2,$3,$4,$5,$6,$7)',
     [id, b.date, b.time, b.patient, b.doctor, b.service, b.status ?? 'kutilmoqda'],
@@ -161,10 +171,30 @@ app.get('/api/patients', async (_req, res) => {
   res.json(rows);
 });
 app.post('/api/patients', async (req, res) => {
-  const b = req.body; const id = uid(); const addedAt = Date.now();
+  const b = req.body; const addedAt = Date.now();
+  const phone = (b.phone ?? '').toString().trim();
+  if (phone) {
+    const existing = await pool.query(
+      'SELECT id, added_at AS "addedAt", archived FROM patients WHERE phone = $1 LIMIT 1',
+      [phone],
+    );
+    if (existing.rowCount && existing.rowCount > 0) {
+      const row = existing.rows[0];
+      const fields: string[] = []; const vals: any[] = [];
+      for (const [k, col] of [['fullName','full_name'],['address','address'],['region','region'],['district','district'],['gender','gender'],['birthDate','birth_date'],['passport','passport']] as const) {
+        if (b[k] !== undefined && b[k] !== null && b[k] !== '') { fields.push(`${col} = $${fields.length + 1}`); vals.push(b[k]); }
+      }
+      if (fields.length) {
+        vals.push(row.id);
+        await pool.query(`UPDATE patients SET ${fields.join(', ')} WHERE id = $${vals.length}`, vals);
+      }
+      return res.json({ id: row.id, addedAt: row.addedAt, archived: row.archived, ...b, phone });
+    }
+  }
+  const id = uid();
   await pool.query(
     'INSERT INTO patients (id, full_name, phone, address, region, district, gender, birth_date, passport, added_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',
-    [id, b.fullName, b.phone ?? '', b.address ?? '', b.region ?? null, b.district ?? null, b.gender ?? null, b.birthDate ?? null, b.passport ?? null, addedAt],
+    [id, b.fullName, phone, b.address ?? '', b.region ?? null, b.district ?? null, b.gender ?? null, b.birthDate ?? null, b.passport ?? null, addedAt],
   );
   res.json({ id, addedAt, archived: false, ...b });
 });

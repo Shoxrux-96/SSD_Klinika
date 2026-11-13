@@ -77,8 +77,6 @@ const RULES: Rule[] = [
   { path: "/lab-results", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: LAB_WRITE },
 
   // Tish xaritasi — ko'rish hamma, yozish shifokor
-  { path: "/dental-records", methods: ["GET"], roles: ALL_STAFF },
-  { path: "/dental-records", methods: ["POST", "PUT", "PATCH", "DELETE"], roles: DOCTOR_WRITE },
 
   // --- Moliya (kassir va buxgalter — bir xil to'liq huquqlar; registrator kassada ishlaydi) ---
   { path: "/transactions", roles: FINANCE_PLUS_REG },
@@ -111,7 +109,7 @@ const RULES: Rule[] = [
 ];
 
 // Autentifikatsiya talab qilinmaydigan path'lar (auth.ts'da batafsil belgilangan).
-const PUBLIC_PREFIXES = ["/healthz", "/docs", "/openapi", "/auth/"];
+const PUBLIC_PREFIXES = ["/healthz", "/docs", "/openapi", "/auth/", "/public/"];
 
 // Bosh sahifa uchun public GET endpoints (auth.ts'ga mos)
 const PUBLIC_GET = new Set(["/employees", "/services", "/service-categories", "/assignments"]);

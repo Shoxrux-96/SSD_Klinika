@@ -396,6 +396,27 @@ h1,h2,h3,p { margin-top:0; }
 .service-arrow { position:absolute; right:14px;top:14px;color:#c5a59b; }
 .service-selected-note { min-height:24px; margin-top:18px; color:#a16a59; font-size:12px; text-align:center; }
 .doctors-layout { display:grid;grid-template-columns:.8fr 1.2fr;gap:48px;align-items:center; }
+.doctors-layout { padding-top:15px; margin-top:15px; }
+.doctor-scroller {
+  display:flex; gap:14px; overflow-x:auto; overflow-y:hidden;
+  scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch;
+  scroll-behavior:smooth; padding:4px 2px 12px; margin:0 -2px;
+  scrollbar-width:thin; scrollbar-color:#e8c2b2 transparent;
+}
+.doctor-scroller::-webkit-scrollbar { height:6px; }
+.doctor-scroller::-webkit-scrollbar-thumb { background:#e8c2b2; border-radius:4px; }
+.doctor-scroller::-webkit-scrollbar-track { background:transparent; }
+.doctor-scroller .doctor-card {
+  flex:0 0 calc((100% - 28px) / 3);
+  scroll-snap-align:start;
+  min-width:0;
+}
+@media (max-width:860px) {
+  .doctor-scroller .doctor-card { flex:0 0 calc((100% - 14px) / 2); }
+}
+@media (max-width:560px) {
+  .doctor-scroller .doctor-card { flex:0 0 85%; }
+}
 .doctors-intro p {margin:17px 0 24px;color:#967c74;font-size:13px;line-height:1.8;max-width:340px}
 .doctor-photo { height:255px; border-radius:25px;overflow:hidden;position:relative;background:#e7eaff; }
 .doctor-photo img {width:100%;height:100%;object-fit:cover;object-position:center 37%}
@@ -403,7 +424,7 @@ h1,h2,h3,p { margin-top:0; }
 .doctor-caption strong {display:block;font-size:12px;color:#8a2000}.doctor-caption span{font-size:10px;color:#9e837a;display:block;margin-top:3px}
 .doctor-grid {display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 .doctor-card {overflow:hidden;background:white;border:1px solid #edf0fb;border-radius:23px;box-shadow:0 8px 24px rgba(136,67,46,.06)}
-.doctor-card img {width:100%;height:180px;object-fit:cover;object-position:50% 30%; background:#e9edff}
+.doctor-card img {width:100%;height:205px;object-fit:cover;object-position:50% 30%; background:#e9edff}
 .doctor-card-copy {padding:14px 15px 16px}
 .doctor-card-copy strong {display:block;font-size:12px;color:#8a2000}.doctor-card-copy span {display:block;font-size:10px;color:#a28982;margin-top:5px;line-height:1.4}
 .doctor-carousel {position:relative}
@@ -516,7 +537,7 @@ h1,h2,h3,p { margin-top:0; }
  .trust-strip{grid-template-columns:1fr 1fr;margin-bottom:74px;padding:11px}.trust-item{justify-content:flex-start;padding:14px 11px;border-right:0}.trust-item:nth-child(odd){border-right:1px solid #eceef8}.trust-item:nth-child(-n+2){border-bottom:1px solid #eceef8}
  .section{margin-bottom:82px}.about-grid{grid-template-columns:1fr;gap:34px}.about-image-wrap{min-height:370px}.about-copy{max-width:640px}
  .service-section{padding:60px 0;border-radius:28px}.service-grid{grid-template-columns:repeat(2,1fr);gap:11px}.service-card{min-height:122px}.organ-image{width:82px;height:82px}.service-info strong{font-size:14px}
- .doctors-layout{grid-template-columns:1fr;gap:28px}.doctors-intro{max-width:550px}.doctor-photo{height:230px}.doctor-grid{gap:10px}.doctor-card img{height:150px}
+ .doctors-layout{grid-template-columns:1fr;gap:28px}.doctors-intro{max-width:550px}.doctor-photo{height:230px}.doctor-grid{gap:10px}.doctor-card img{height:175px}
  .facility-section{grid-template-columns:1fr;gap:26px;padding:28px}.facility-mosaic{grid-template-rows:125px 125px}
  .contact-section{grid-template-columns:1fr;gap:30px;padding:35px;margin-bottom:60px}
 }
@@ -528,7 +549,7 @@ h1,h2,h3,p { margin-top:0; }
  .about-image-wrap{min-height:290px}.about-image{inset:0 15px 19px 0;border-radius:24px 72px 24px 24px}.about-image-badge{padding:13px 16px}.about-image-badge strong{font-size:24px}.about-points{gap:13px 10px}.about-point{font-size:10px}
  .about-tooth-stage{min-height:380px}.about-tooth-img{max-width:260px}.about-tooth-glow{width:280px;height:280px}.about-tooth-orbit-one{width:260px;height:260px}.about-tooth-orbit-two{width:320px;height:320px}
  .service-section{padding:48px 0;border-radius:22px}.service-grid{grid-template-columns:1fr 1fr;gap:8px}.service-card{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;min-height:159px;padding:11px;border-radius:16px;gap:5px}.organ-image{width:78px;height:78px;align-self:center}.service-info strong{font-size:13px}.service-info span{font-size:9px}.service-arrow{right:9px;top:9px}
- .doctor-grid{grid-template-columns:1fr 1fr}.doctor-card img{height:140px}.doctor-card:last-child{display:none}.doctor-caption{left:9px;right:9px;bottom:9px;padding:10px}
+ .doctor-grid{grid-template-columns:1fr 1fr}.doctor-card img{height:165px}.doctor-card:last-child{display:none}.doctor-caption{left:9px;right:9px;bottom:9px;padding:10px}
  .facility-section{padding:23px 18px;border-radius:22px}.facility-mosaic{grid-template-rows:105px 105px;gap:8px}.facility-tile{border-radius:13px}.facility-tile span{font-size:9px;left:9px;bottom:9px}
  .articles-grid{grid-template-columns:1fr;gap:13px}.article-card{display:grid;grid-template-columns:118px 1fr;min-height:134px}.article-card img{height:100%;min-height:134px}.article-copy{padding:13px}.article-copy h3{font-size:13px;margin:8px 0 5px}.article-copy p{font-size:10px}.article-meta{margin-top:8px}
  .contact-section{padding:25px 17px;border-radius:24px}.contact-form{padding:17px}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}
@@ -603,7 +624,14 @@ h1,h2,h3,p { margin-top:0; }
   .scene-legend button {font-size:8px;padding:6px 7px}
 }
 @media (prefers-reduced-motion: reduce) {
-  .anatomy-body,.orbit-two {animation:none}
+  *,*::before,*::after {animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important;}
+  .anatomy-showcase-tilt {animation:none !important}
+  .anatomy-showcase-glow {animation:none !important}
+}
+.anatomy-body,.anatomy-showcase-tilt,.anatomy-showcase-glow,.anatomy-showcase-img {will-change:transform; transform:translateZ(0); backface-visibility:hidden}
+@media (max-width:760px) {
+  .anatomy-showcase-tilt {animation:none}
+  .anatomy-showcase-glow {animation:none; opacity:.4}
 }
 
 /* Contact details and dedicated appointment request */
@@ -913,7 +941,7 @@ body {font-size:20px}
 @media (max-width: 480px) {
   /* Doktor karuseli — telefon ekranida 1 ustun */
   .doctor-grid { grid-template-columns: 1fr !important; }
-  .doctor-card img { height: 200px !important; }
+  .doctor-card img { height: 225px !important; }
 
   /* Clinic map kichik ekranda */
   .cm-map-box { height: 260px !important; }

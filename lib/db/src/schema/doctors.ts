@@ -1,4 +1,4 @@
-import { pgTable, text, bigint, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, bigint, boolean, jsonb } from "drizzle-orm/pg-core";
 
 export const employeesTable = pgTable("employees", {
   id: text("id").primaryKey(),
@@ -17,6 +17,9 @@ export const employeesTable = pgTable("employees", {
   username: text("username"),
   passwordHash: text("password_hash"),
   role: text("role").notNull().default("oddiy"),
+  // Ish jadvali
+  workHours: jsonb("work_hours").$type<Record<string, [string, string] | null>>(),
+  offDates: jsonb("off_dates").$type<string[]>().default([]),
 });
 
 export type Employee = typeof employeesTable.$inferSelect;

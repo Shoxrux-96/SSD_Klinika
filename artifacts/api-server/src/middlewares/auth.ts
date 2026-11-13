@@ -10,6 +10,8 @@ const PUBLIC_PATHS = new Set([
   "/auth/login",
   "/auth/me",
   "/auth/logout",
+  "/public/appointment",
+  "/public/busy-slots",
 ]);
 
 // Bosh sahifa (public landing page) uchun kerakli GET endpointlar —

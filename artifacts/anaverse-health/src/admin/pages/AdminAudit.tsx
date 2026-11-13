@@ -45,7 +45,6 @@ const ENTITY_DICT: Record<string, string> = {
   treatment: 'Davolash',
   lab_result: 'Laboratoriya tahlili',
   prescription: 'Retsept',
-  dental_record: 'Tish yozuvi',
   transaction: "To'lov",
   payroll: 'Oylik maosh',
   debt: 'Qarzdor',
